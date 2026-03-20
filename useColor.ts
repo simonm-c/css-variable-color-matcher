@@ -1,16 +1,9 @@
 // OKLab color representation — perceptually uniform for distance comparisons
-interface OklabColor {
+export interface OklabColor {
   L: number; // [0, 1]
   a: number; // ~[-0.4, 0.4]
   b: number; // ~[-0.4, 0.4]
   alpha: number; // [0, 1]
-}
-
-// sRGB 0–255 channels for redmean distance formula
-interface RgbChannels {
-  r: number; // [0, 255]
-  g: number; // [0, 255]
-  b: number; // [0, 255]
 }
 
 // --- Matrix & math helpers ---
@@ -25,18 +18,10 @@ function multiplyMatrix(m: [Vec3, Vec3, Vec3], v: Vec3): Vec3 {
   ];
 }
 
-function clamp(x: number, min: number, max: number): number {
-  return Math.min(Math.max(x, min), max);
-}
-
 // --- sRGB gamma transfer ---
 
 function srgbToLinear(c: number): number {
   return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-}
-
-function linearToSrgb(c: number): number {
-  return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
 }
 
 // --- Conversion matrices ---
@@ -46,13 +31,6 @@ const SRGB_TO_XYZ: [Vec3, Vec3, Vec3] = [
   [0.4123907992659595, 0.357584339383878, 0.1804807884018343],
   [0.21263900587151027, 0.715168678767756, 0.07219231536073371],
   [0.01933081871559182, 0.11919477979462598, 0.9505321522496607],
-];
-
-// XYZ D65 -> Linear sRGB
-const XYZ_TO_SRGB: [Vec3, Vec3, Vec3] = [
-  [3.2409699419045226, -1.5373831775700939, -0.4986107602930034],
-  [-0.9692436362808796, 1.8759675015077202, 0.04155505740717559],
-  [0.05563007969699366, -0.20397696064091522, 1.0569715142428786],
 ];
 
 // Linear Display-P3 -> XYZ D65
@@ -83,20 +61,6 @@ const OKLAB_M2: [Vec3, Vec3, Vec3] = [
   [0.0259040371, 0.7827717662, -0.808675766],
 ];
 
-// Inverse OKLab M2: OKLab -> LMS (cube-root)
-const OKLAB_M2_INV: [Vec3, Vec3, Vec3] = [
-  [1.0, 0.3963377774, 0.2158037573],
-  [1.0, -0.1055613458, -0.0638541728],
-  [1.0, -0.0894841775, -1.291485548],
-];
-
-// Inverse OKLab M1: LMS -> XYZ D65
-const OKLAB_M1_INV: [Vec3, Vec3, Vec3] = [
-  [1.2270138511035211, -0.5577999806518222, 0.2812561489664678],
-  [-0.0405801784232806, 1.1122568696168302, -0.0716766786656012],
-  [-0.0763812845057069, -0.4214819784180127, 1.5861632204407947],
-];
-
 // --- Core conversions ---
 
 function linearSrgbToOklab(r: number, g: number, b: number): Vec3 {
@@ -108,13 +72,6 @@ function xyzD65ToOklab(xyz: Vec3): Vec3 {
   const lms = multiplyMatrix(OKLAB_M1, xyz);
   const lms_ = [Math.cbrt(lms[0]), Math.cbrt(lms[1]), Math.cbrt(lms[2])] as Vec3;
   return multiplyMatrix(OKLAB_M2, lms_);
-}
-
-function oklabToLinearSrgb(L: number, a: number, b: number): Vec3 {
-  const lms_ = multiplyMatrix(OKLAB_M2_INV, [L, a, b]);
-  const lms: Vec3 = [lms_[0] ** 3, lms_[1] ** 3, lms_[2] ** 3];
-  const xyz = multiplyMatrix(OKLAB_M1_INV, lms);
-  return multiplyMatrix(XYZ_TO_SRGB, xyz);
 }
 
 // --- Color space -> OKLab converters ---
@@ -244,6 +201,10 @@ function splitArgs(inner: string): string[] {
     .filter((s) => s.length > 0);
 }
 
+function validOklab(c: OklabColor): OklabColor | null {
+  return Number.isFinite(c.L) && Number.isFinite(c.a) && Number.isFinite(c.b) ? c : null;
+}
+
 export function parseColor(css: string): OklabColor | null {
   const s = css.trim().toLowerCase();
 
@@ -263,7 +224,7 @@ export function parseColor(css: string): OklabColor | null {
     const b = parseInt(hex.slice(4, 6), 16) / 255;
     const a = hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1;
     const [L, oa, ob] = srgbToOklab(r, g, b);
-    return { L, a: oa, b: ob, alpha: a };
+    return validOklab({ L, a: oa, b: ob, alpha: a });
   }
 
   // Functional notation: extract function name and inner content
@@ -293,7 +254,7 @@ export function parseColor(css: string): OklabColor | null {
     }
     const a = fn === "rgba" && components.length >= 4 ? parseComponent(components[3]) : alpha;
     const [L, oa, ob] = srgbToOklab(r / 255, g / 255, b / 255);
-    return { L, a: oa, b: ob, alpha: a };
+    return validOklab({ L, a: oa, b: ob, alpha: a });
   }
 
   if ((fn === "hsl" || fn === "hsla") && components.length >= 3) {
@@ -302,7 +263,7 @@ export function parseColor(css: string): OklabColor | null {
     const l = parseFloat(components[2]) / 100;
     const a = fn === "hsla" && components.length >= 4 ? parseComponent(components[3]) : alpha;
     const [L, oa, ob] = hslToOklab(h, s2, l);
-    return { L, a: oa, b: ob, alpha: a };
+    return validOklab({ L, a: oa, b: ob, alpha: a });
   }
 
   if (fn === "hwb" && components.length >= 3) {
@@ -310,14 +271,14 @@ export function parseColor(css: string): OklabColor | null {
     const w = parseFloat(components[1]) / 100;
     const bk = parseFloat(components[2]) / 100;
     const [L, oa, ob] = hwbToOklab(h, w, bk);
-    return { L, a: oa, b: ob, alpha };
+    return validOklab({ L, a: oa, b: ob, alpha });
   }
 
   if (fn === "oklab" && components.length >= 3) {
     const L = parseComponent(components[0]);
     const a2 = parseFloat(components[1]);
     const b2 = parseFloat(components[2]);
-    return { L, a: a2, b: b2, alpha };
+    return validOklab({ L, a: a2, b: b2, alpha });
   }
 
   if (fn === "oklch" && components.length >= 3) {
@@ -325,7 +286,7 @@ export function parseColor(css: string): OklabColor | null {
     const C = parseFloat(components[1]);
     const H = parseFloat(components[2]);
     const [oL, oa, ob] = oklchToOklab(L, C, H);
-    return { L: oL, a: oa, b: ob, alpha };
+    return validOklab({ L: oL, a: oa, b: ob, alpha });
   }
 
   if (fn === "lab" && components.length >= 3) {
@@ -333,7 +294,7 @@ export function parseColor(css: string): OklabColor | null {
     const a2 = parseFloat(components[1]);
     const b2 = parseFloat(components[2]);
     const [oL, oa, ob] = labToOklab(L, a2, b2);
-    return { L: oL, a: oa, b: ob, alpha };
+    return validOklab({ L: oL, a: oa, b: ob, alpha });
   }
 
   if (fn === "lch" && components.length >= 3) {
@@ -341,7 +302,7 @@ export function parseColor(css: string): OklabColor | null {
     const C = parseFloat(components[1]);
     const H = parseFloat(components[2]);
     const [oL, oa, ob] = lchToOklab(L, C, H);
-    return { L: oL, a: oa, b: ob, alpha };
+    return validOklab({ L: oL, a: oa, b: ob, alpha });
   }
 
   if (fn === "color" && components.length >= 4) {
@@ -352,15 +313,15 @@ export function parseColor(css: string): OklabColor | null {
 
     if (space === "srgb") {
       const [L, oa, ob] = srgbToOklab(c1, c2, c3);
-      return { L, a: oa, b: ob, alpha };
+      return validOklab({ L, a: oa, b: ob, alpha });
     }
     if (space === "srgb-linear") {
       const [L, oa, ob] = linearSrgbToOklab(c1, c2, c3);
-      return { L, a: oa, b: ob, alpha };
+      return validOklab({ L, a: oa, b: ob, alpha });
     }
     if (space === "display-p3") {
       const [L, oa, ob] = displayP3ToOklab(c1, c2, c3);
-      return { L, a: oa, b: ob, alpha };
+      return validOklab({ L, a: oa, b: ob, alpha });
     }
   }
 
@@ -394,126 +355,12 @@ export function parseLightDark(css: string): { light: string; dark: string } | n
   return { light, dark };
 }
 
-// --- Public API ---
-
-// Extract sRGB 0–255 channels, parsing directly from the CSS source when
-// the format already carries R/G/B, otherwise converting via OKLab → sRGB.
-export function getColorChannels(color: OklabColor, cssSource?: string): RgbChannels {
-  if (cssSource) {
-    const s = cssSource.trim().toLowerCase();
-
-    // Hex — direct parse
-    const hexMatch = s.match(/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/);
-    if (hexMatch) {
-      let hex = hexMatch[1];
-      if (hex.length <= 4) {
-        hex = hex
-          .split("")
-          .map((c) => c + c)
-          .join("");
-      }
-      return {
-        r: parseInt(hex.slice(0, 2), 16),
-        g: parseInt(hex.slice(2, 4), 16),
-        b: parseInt(hex.slice(4, 6), 16),
-      };
-    }
-
-    const funcMatch = s.match(/^([a-z][a-z0-9-]*)\((.+)\)$/);
-    if (funcMatch) {
-      const fn = funcMatch[1];
-      const args = splitArgs(funcMatch[2]);
-      const slashIdx = args.indexOf("/");
-      const components = slashIdx !== -1 ? args.slice(0, slashIdx) : args;
-
-      // rgb / rgba — already 0–255
-      if ((fn === "rgb" || fn === "rgba") && components.length >= 3) {
-        let r = parseFloat(components[0]);
-        let g = parseFloat(components[1]);
-        let b = parseFloat(components[2]);
-        if (components[0].includes("%")) {
-          r = (r / 100) * 255;
-          g = (g / 100) * 255;
-          b = (b / 100) * 255;
-        }
-        return {
-          r: Math.round(clamp(r, 0, 255)),
-          g: Math.round(clamp(g, 0, 255)),
-          b: Math.round(clamp(b, 0, 255)),
-        };
-      }
-
-      // hsl / hsla — convert via hslToSrgb
-      if ((fn === "hsl" || fn === "hsla") && components.length >= 3) {
-        const h = parseFloat(components[0]);
-        const sat = parseFloat(components[1]) / 100;
-        const l = parseFloat(components[2]) / 100;
-        const [r, g, b] = hslToSrgb(h, sat, l);
-        return {
-          r: Math.round(clamp(r * 255, 0, 255)),
-          g: Math.round(clamp(g * 255, 0, 255)),
-          b: Math.round(clamp(b * 255, 0, 255)),
-        };
-      }
-
-      // hwb
-      if (fn === "hwb" && components.length >= 3) {
-        const h = parseFloat(components[0]);
-        const w = parseFloat(components[1]) / 100;
-        const bk = parseFloat(components[2]) / 100;
-        let r: number, g: number, b: number;
-        if (w + bk >= 1) {
-          const grey = w / (w + bk);
-          r = g = b = grey;
-        } else {
-          const [br, bg, bb] = hslToSrgb(h, 1, 0.5);
-          const f = 1 - w - bk;
-          r = br * f + w;
-          g = bg * f + w;
-          b = bb * f + w;
-        }
-        return {
-          r: Math.round(clamp(r * 255, 0, 255)),
-          g: Math.round(clamp(g * 255, 0, 255)),
-          b: Math.round(clamp(b * 255, 0, 255)),
-        };
-      }
-
-      // color(srgb ...) and color(srgb-linear ...)
-      if (fn === "color" && components.length >= 4) {
-        if (components[0] === "srgb") {
-          return {
-            r: Math.round(clamp(parseFloat(components[1]) * 255, 0, 255)),
-            g: Math.round(clamp(parseFloat(components[2]) * 255, 0, 255)),
-            b: Math.round(clamp(parseFloat(components[3]) * 255, 0, 255)),
-          };
-        }
-        if (components[0] === "srgb-linear") {
-          return {
-            r: Math.round(clamp(linearToSrgb(parseFloat(components[1])) * 255, 0, 255)),
-            g: Math.round(clamp(linearToSrgb(parseFloat(components[2])) * 255, 0, 255)),
-            b: Math.round(clamp(linearToSrgb(parseFloat(components[3])) * 255, 0, 255)),
-          };
-        }
-      }
-    }
-  }
-
-  // Fallback: convert from OKLab → linear sRGB → sRGB → 0–255
-  const [lr, lg, lb] = oklabToLinearSrgb(color.L, color.a, color.b);
-  return {
-    r: Math.round(clamp(linearToSrgb(lr) * 255, 0, 255)),
-    g: Math.round(clamp(linearToSrgb(lg) * 255, 0, 255)),
-    b: Math.round(clamp(linearToSrgb(lb) * 255, 0, 255)),
-  };
-}
-
-// Compuphase redmean weighted color distance approximation
-// https://www.compuphase.com/cmetric.htm
-export function colorDistanceRedmean(a: RgbChannels, b: RgbChannels): number {
-  const rmean = (a.r + b.r) / 2;
-  const dr = a.r - b.r;
-  const dg = a.g - b.g;
+// Euclidean distance in OKLab — perceptually uniform, so raw Euclidean
+// is appropriate (unlike sRGB which needs weighted approximations).
+// Scaled by 256 so thresholds remain comparable to the old redmean metric.
+export function colorDistanceOklab(a: OklabColor, b: OklabColor): number {
+  const dL = a.L - b.L;
+  const da = a.a - b.a;
   const db = a.b - b.b;
-  return Math.sqrt(((512 + rmean) * dr * dr) / 256 + 4 * dg * dg + ((767 - rmean) * db * db) / 256);
+  return Math.sqrt(dL * dL + da * da + db * db) * 256;
 }
