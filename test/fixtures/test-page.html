@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Page — CSS Variables</title>
+  <style>
+    :root {
+      --color-brand: #ff0000;
+      --color-bg: #ffffff;
+      --color-text: #333333;
+      --spacing-sm: 8px;
+      --font-body: "Inter", sans-serif;
+    }
+
+    @layer theme {
+      :root {
+        --color-accent: hsl(200, 80%, 50%);
+        --color-muted: hsl(220, 10%, 60%);
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-dark-only: #111111;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Test Page</h1>
+  <div id="js-styled" style="--color-inline: #00ff00;"></div>
+</body>
+</html>

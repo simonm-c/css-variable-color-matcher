@@ -1,15 +1,19 @@
+// Content script — must be self-contained (no imports).
+// Chrome loads content scripts as classic scripts, not ES modules.
+
 declare class EyeDropper {
   open(options?: { signal?: AbortSignal }): Promise<{ sRGBHex: string }>;
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message.action === "start-eyedropper") {
+  const msg = message as { action?: string; append?: boolean };
+  if (msg.action === "start-eyedropper") {
     const dropper = new EyeDropper();
     dropper
       .open()
       .then(async (result) => {
         const hex = result.sRGBHex;
-        if (message.append) {
+        if (msg.append) {
           const data = await chrome.storage.local.get("pickedColors");
           const colors: string[] = data.pickedColors ?? [];
           colors.push(hex);

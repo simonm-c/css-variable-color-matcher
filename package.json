@@ -6,11 +6,18 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
-    "fmt": "oxfmt --write *.ts",
-    "fmt:check": "oxfmt --check *.ts",
-    "lint": "oxlint *.ts",
-    "lint:fix": "oxlint --fix *.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "fmt": "oxfmt --write src/**/*.ts",
+    "fmt:check": "oxfmt --check src/**/*.ts",
+    "lint": "oxlint src/**/*.ts",
+    "lint:fix": "oxlint --fix src/**/*.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:integration": "pnpm run build && vitest run --config vitest.config.integration.ts",
+    "test:all": "pnpm run test && pnpm run test:integration"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["puppeteer"]
   },
   "repository": {
     "type": "git",
@@ -24,9 +31,14 @@
   },
   "homepage": "https://github.com/simonm-c/css-variable-color-matcher#readme",
   "devDependencies": {
+    "@vitest/coverage-istanbul": "^4.1.0",
+    "@vitest/coverage-v8": "^4.1.0",
     "chrome-types": "^0.1.425",
+    "jsdom": "^29.0.1",
     "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0",
-    "typescript": "^5.9.3"
+    "puppeteer": "^24.40.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.0"
   }
 }
