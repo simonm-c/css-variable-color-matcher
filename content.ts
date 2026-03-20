@@ -15,6 +15,16 @@ function scanDocument(doc: Document, vars: Record<string, string>): void {
       // Skip cross-origin stylesheets
     }
   }
+  // Scan adopted/constructed stylesheets (used by web components, CSS-in-JS, etc.)
+  if (doc.adoptedStyleSheets) {
+    for (const sheet of doc.adoptedStyleSheets) {
+      try {
+        collectColorProps(sheet.cssRules, propSelectors);
+      } catch {
+        // Skip inaccessible adopted stylesheets
+      }
+    }
+  }
 
   for (const [prop, selectors] of propSelectors) {
     if (vars[prop]) continue;
@@ -78,7 +88,11 @@ function getColorVariables(): Record<string, string> {
   return vars;
 }
 
-function collectColorProps(rules: CSSRuleList, out: Map<string, Set<string>>): void {
+function collectColorProps(
+  rules: CSSRuleList,
+  out: Map<string, Set<string>>,
+  parentSelector?: string,
+): void {
   for (const rule of rules) {
     if (rule instanceof CSSStyleRule) {
       for (let i = 0; i < rule.style.length; i++) {
@@ -92,10 +106,30 @@ function collectColorProps(rules: CSSRuleList, out: Map<string, Set<string>>): v
           selectors.add(rule.selectorText);
         }
       }
-    }
-    // Recurse into nested rules (@media, @supports, @layer, etc.)
-    if ("cssRules" in rule && (rule as CSSGroupingRule).cssRules) {
-      collectColorProps((rule as CSSGroupingRule).cssRules, out);
+      // Recurse into CSS-nested rules, passing selector for CSSNestedDeclarations
+      if ("cssRules" in rule && rule.cssRules) {
+        collectColorProps(rule.cssRules, out, rule.selectorText);
+      }
+    } else {
+      // CSSNestedDeclarations — declarations split by nested rules inherit parent selector
+      if ("style" in rule && parentSelector) {
+        const style = (rule as unknown as CSSStyleRule).style;
+        for (let i = 0; i < style.length; i++) {
+          const prop = style[i];
+          if (prop.startsWith("--color-")) {
+            let selectors = out.get(prop);
+            if (!selectors) {
+              selectors = new Set();
+              out.set(prop, selectors);
+            }
+            selectors.add(parentSelector);
+          }
+        }
+      }
+      // Recurse into grouping rules (@layer, @media, @supports, etc.)
+      if ("cssRules" in rule && (rule as CSSGroupingRule).cssRules) {
+        collectColorProps((rule as CSSGroupingRule).cssRules, out, parentSelector);
+      }
     }
   }
 }
