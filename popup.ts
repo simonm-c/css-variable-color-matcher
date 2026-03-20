@@ -6,6 +6,29 @@ const varsListEl = document.getElementById("vars-list") as HTMLDivElement;
 const saveBtn = document.getElementById("save-btn") as HTMLButtonElement;
 const listNameInput = document.getElementById("list-name") as HTMLInputElement;
 const savedListsEl = document.getElementById("saved-lists") as HTMLDivElement;
+const varsSearchEl = document.getElementById("vars-search") as HTMLInputElement;
+const popoutBtn = document.getElementById("popout-btn") as HTMLButtonElement;
+
+// Pop out into a standalone window
+popoutBtn.addEventListener("click", () => {
+  chrome.runtime.sendMessage({ action: "open-panel" });
+  window.close();
+});
+
+let currentVars: Record<string, string> = {};
+varsSearchEl.addEventListener("input", () => {
+  displayColorVariables(currentVars);
+});
+
+// Find the active tab in the last focused normal browser window
+// (works both from the popup and from the standalone panel window)
+async function getActiveTab(): Promise<chrome.tabs.Tab | undefined> {
+  const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+  if (tab && tab.url && !tab.url.startsWith("chrome-extension://")) return tab;
+  // Fallback: find the active tab across all normal windows
+  const tabs = await chrome.tabs.query({ active: true, windowType: "normal" });
+  return tabs[0];
+}
 
 // Display cached color variables and saved lists on popup open
 chrome.storage.local.get(["colorVariables", "savedLists", "activeList"], (data) => {
@@ -15,14 +38,12 @@ chrome.storage.local.get(["colorVariables", "savedLists", "activeList"], (data) 
 });
 
 scanBtn.addEventListener("click", async () => {
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    currentWindow: true,
-  });
+  const tab = await getActiveTab();
   if (!tab?.id) return;
 
+  const scanBtnText = document.getElementById("scan-btn-text") as HTMLSpanElement;
   scanBtn.disabled = true;
-  scanBtn.textContent = "Scanning...";
+  scanBtnText.textContent = "Scanning...";
 
   try {
     // Execute in ALL frames so each frame scans its own stylesheets directly
@@ -43,7 +64,7 @@ scanBtn.addEventListener("click", async () => {
     displayColorVariables(merged);
   } finally {
     scanBtn.disabled = false;
-    scanBtn.textContent = "Scan Page Variables";
+    scanBtnText.textContent = "Scan Page Variables";
   }
 });
 
@@ -56,7 +77,7 @@ function scanFrameColorVariables(): Record<string, string> {
   // Collect --color-* property names and their declaring selectors from stylesheets
   const propSelectors = new Map<string, Set<string>>();
 
-  function collectFromRules(rules: CSSRuleList): void {
+  function collectFromRules(rules: CSSRuleList, parentSelector?: string): void {
     for (const rule of rules) {
       if (rule instanceof CSSStyleRule) {
         for (let i = 0; i < rule.style.length; i++) {
@@ -70,12 +91,37 @@ function scanFrameColorVariables(): Record<string, string> {
             selectors.add(rule.selectorText);
           }
         }
-      }
-      if ("cssRules" in rule) {
-        try {
-          collectFromRules((rule as CSSGroupingRule).cssRules);
-        } catch {
-          // Skip inaccessible nested rules
+        // Recurse into CSS-nested rules, passing selector for CSSNestedDeclarations
+        if ("cssRules" in rule) {
+          try {
+            collectFromRules(rule.cssRules, rule.selectorText);
+          } catch {
+            // Skip inaccessible nested rules
+          }
+        }
+      } else {
+        // CSSNestedDeclarations — declarations split by nested rules inherit parent selector
+        if ("style" in rule && parentSelector) {
+          const style = (rule as unknown as CSSStyleRule).style;
+          for (let i = 0; i < style.length; i++) {
+            const prop = style[i];
+            if (prop.startsWith("--color-")) {
+              let selectors = propSelectors.get(prop);
+              if (!selectors) {
+                selectors = new Set();
+                propSelectors.set(prop, selectors);
+              }
+              selectors.add(parentSelector);
+            }
+          }
+        }
+        // Recurse into grouping rules (@layer, @media, @supports, etc.)
+        if ("cssRules" in rule) {
+          try {
+            collectFromRules((rule as CSSGroupingRule).cssRules, parentSelector);
+          } catch {
+            // Skip inaccessible nested rules
+          }
         }
       }
     }
@@ -86,6 +132,16 @@ function scanFrameColorVariables(): Record<string, string> {
       collectFromRules(sheet.cssRules);
     } catch {
       // Skip cross-origin stylesheets
+    }
+  }
+  // Scan adopted/constructed stylesheets (used by web components, CSS-in-JS, etc.)
+  if (document.adoptedStyleSheets) {
+    for (const sheet of document.adoptedStyleSheets) {
+      try {
+        collectFromRules(sheet.cssRules);
+      } catch {
+        // Skip inaccessible adopted stylesheets
+      }
     }
   }
 
@@ -215,7 +271,8 @@ function renderSavedLists(
 
     const deleteBtn = document.createElement("button");
     deleteBtn.className = "saved-list-delete";
-    deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7 21q-.825 0-1.412-.587T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.587 1.413T17 21zM17 6H7v13h10zM9 17h2V8H9zm4 0h2V8h-2zM7 6v13z"/></svg>';
+    deleteBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7 21q-.825 0-1.412-.587T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.587 1.413T17 21zM17 6H7v13h10zM9 17h2V8H9zm4 0h2V8h-2zM7 6v13z"/></svg>';
     deleteBtn.addEventListener("click", () => {
       delete lists[name];
       const newActive = isActive ? null : activeList;
@@ -249,10 +306,7 @@ chrome.storage.onChanged.addListener((changes) => {
 pickBtn.addEventListener("click", async (event) => {
   const append = event.shiftKey;
 
-  const [tab] = await chrome.tabs.query({
-    active: true,
-    currentWindow: true,
-  });
+  const tab = await getActiveTab();
   if (!tab?.id) return;
 
   const msg = { action: "start-eyedropper", append };
@@ -270,11 +324,13 @@ pickBtn.addEventListener("click", async (event) => {
 });
 
 function displayColorVariables(vars: Record<string, string>): void {
+  currentVars = vars;
   varsListEl.innerHTML = "";
 
-  const entries = Object.entries(vars);
-  if (entries.length === 0) {
+  const allEntries = Object.entries(vars);
+  if (allEntries.length === 0) {
     varsSummaryEl.textContent = "Color Variables (0)";
+    varsSearchEl.parentElement!.style.display = "none";
     const msg = document.createElement("p");
     msg.id = "no-vars-msg";
     msg.textContent = "No --color-* variables found on this page.";
@@ -282,7 +338,18 @@ function displayColorVariables(vars: Record<string, string>): void {
     return;
   }
 
-  varsSummaryEl.textContent = `Color Variables (${entries.length})`;
+  varsSearchEl.parentElement!.style.display = "";
+  const query = varsSearchEl.value.toLowerCase();
+  const entries = query
+    ? allEntries.filter(
+        ([name, value]) =>
+          name.toLowerCase().includes(query) || value.toLowerCase().includes(query),
+      )
+    : allEntries;
+
+  varsSummaryEl.textContent = query
+    ? `Color Variables (${entries.length} / ${allEntries.length})`
+    : `Color Variables (${allEntries.length})`;
 
   for (const [name, value] of entries) {
     const entry = document.createElement("div");
@@ -343,14 +410,37 @@ function displayPickedColors(colors: string[]): void {
 
       // Compare against all stored variables
       const pickedChannels = getColorChannels(pickedColor, hex);
-      const matches: { name: string; value: string; distance: number }[] = [];
+      const matches: ColorMatch[] = [];
 
       for (const [name, value] of Object.entries(vars)) {
         const varColor = parseColor(value);
-        if (!varColor) continue;
-        const varChannels = getColorChannels(varColor, value);
-        const distance = colorDistanceRedmean(pickedChannels, varChannels);
-        matches.push({ name, value, distance });
+        if (varColor) {
+          const varChannels = getColorChannels(varColor, value);
+          const distance = colorDistanceRedmean(pickedChannels, varChannels);
+          matches.push({ name, value, distance });
+          continue;
+        }
+
+        // Try light-dark()
+        const ld = parseLightDark(value);
+        if (!ld) continue;
+        const lightColor = parseColor(ld.light);
+        const darkColor = parseColor(ld.dark);
+        if (!lightColor && !darkColor) continue;
+
+        const lightDist = lightColor
+          ? colorDistanceRedmean(pickedChannels, getColorChannels(lightColor, ld.light))
+          : Infinity;
+        const darkDist = darkColor
+          ? colorDistanceRedmean(pickedChannels, getColorChannels(darkColor, ld.dark))
+          : Infinity;
+
+        matches.push({
+          name,
+          value,
+          distance: Math.min(lightDist, darkDist),
+          lightDark: { light: ld.light, dark: ld.dark, lightDist, darkDist },
+        });
       }
 
       matches.sort((a, b) => a.distance - b.distance);
@@ -364,8 +454,8 @@ function displayPickedColors(colors: string[]): void {
       }
 
       // Split into tiers: exact (rounds to 0 or 1), close, far
-      const exact = matches.filter((m) => Math.round(m.distance) <= 1);
-      const rest = matches.filter((m) => Math.round(m.distance) > 1);
+      const exact = matches.filter((m) => Math.round(m.distance) <= 2);
+      const rest = matches.filter((m) => Math.round(m.distance) > 2);
 
       // Show all exact matches, then ~5 close, then ~5 far
       const closeCount = Math.max(5, exact.length > 5 ? 0 : 5);
@@ -385,16 +475,19 @@ function displayPickedColors(colors: string[]): void {
   });
 }
 
-function createMatchEntry(
-  match: { name: string; value: string; distance: number },
-  tier: string,
-): HTMLDivElement {
+interface ColorMatch {
+  name: string;
+  value: string;
+  distance: number;
+  lightDark?: { light: string; dark: string; lightDist: number; darkDist: number };
+}
+
+function createMatchEntry(match: ColorMatch, tier: string): HTMLDivElement {
   const entry = document.createElement("div");
   entry.className = `match-entry ${tier}`;
 
   const swatch = document.createElement("div");
   swatch.className = "match-swatch";
-  swatch.style.backgroundColor = match.value;
 
   const info = document.createElement("div");
   info.className = "match-info";
@@ -405,7 +498,52 @@ function createMatchEntry(
 
   const valueEl = document.createElement("div");
   valueEl.className = "match-value";
-  valueEl.textContent = `${match.value} — distance: ${Math.round(match.distance)}`;
+
+  if (match.lightDark) {
+    const { light, dark, lightDist, darkDist } = match.lightDark;
+    const bothExact = Math.round(lightDist) <= 2 && Math.round(darkDist) <= 2;
+
+    // Swatch shows the closer-matching color
+    swatch.style.backgroundColor = lightDist <= darkDist ? light : dark;
+
+    if (bothExact) {
+      // Both sides match exactly — show as normal text
+      valueEl.textContent = `${match.value} — distance: ${Math.round(match.distance)}`;
+    } else {
+      // Highlight the matching side(s)
+      const lightClass =
+        Math.round(lightDist) <= 2
+          ? "ld-match"
+          : lightDist < Infinity
+            ? lightDist <= darkDist
+              ? "ld-match"
+              : "ld-dim"
+            : "ld-dim";
+      const darkClass =
+        Math.round(darkDist) <= 2
+          ? "ld-match"
+          : darkDist < Infinity
+            ? darkDist <= lightDist
+              ? "ld-match"
+              : "ld-dim"
+            : "ld-dim";
+
+      valueEl.append("light-dark(");
+      const lightSpan = document.createElement("span");
+      lightSpan.className = lightClass;
+      lightSpan.textContent = light;
+      valueEl.appendChild(lightSpan);
+      valueEl.append(", ");
+      const darkSpan = document.createElement("span");
+      darkSpan.className = darkClass;
+      darkSpan.textContent = dark;
+      valueEl.appendChild(darkSpan);
+      valueEl.append(`) — distance: ${Math.round(match.distance)}`);
+    }
+  } else {
+    swatch.style.backgroundColor = match.value;
+    valueEl.textContent = `${match.value} — distance: ${Math.round(match.distance)}`;
+  }
 
   info.appendChild(nameEl);
   info.appendChild(valueEl);

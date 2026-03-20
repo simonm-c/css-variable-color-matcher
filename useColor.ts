@@ -367,6 +367,33 @@ function parseColor(css: string): OklabColor | null {
   return null;
 }
 
+function parseLightDark(css: string): { light: string; dark: string } | null {
+  const s = css.trim();
+  const match = s.match(/^light-dark\((.+)\)$/i);
+  if (!match) return null;
+
+  // Split on top-level comma (skip commas inside nested parentheses)
+  const inner = match[1];
+  let depth = 0;
+  let splitIdx = -1;
+  for (let i = 0; i < inner.length; i++) {
+    const ch = inner[i];
+    if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    else if (ch === "," && depth === 0) {
+      splitIdx = i;
+      break;
+    }
+  }
+  if (splitIdx === -1) return null;
+
+  const light = inner.slice(0, splitIdx).trim();
+  const dark = inner.slice(splitIdx + 1).trim();
+  if (!light || !dark) return null;
+
+  return { light, dark };
+}
+
 // --- Public API ---
 
 function colorDistanceOklab(a: OklabColor, b: OklabColor): number {
