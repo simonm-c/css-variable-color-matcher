@@ -4,23 +4,41 @@ Chrome extension that scans all CSS custom properties from web pages, filters to
 
 ## Build
 
-- Source files are `*.ts` (TypeScript) — **never edit the `.js` files directly**, they are compiler output
-- `pnpm run build` (or `npx tsc`) compiles `.ts` → `.js`
+- Source files live in `src/` (TypeScript) — **never edit the `dist/` files directly**, they are compiler output
+- `pnpm run build` (or `npx tsc`) compiles `src/**/*.ts` → `dist/`
 - `pnpm run fmt` formats with oxfmt
 - `pnpm run lint` lints with oxlint
 
 ## Project structure
 
-- `popup.ts` — Extension popup UI, scanning trigger (`scanFrameColorVariables` injected into page frames), search/filter, saved lists
-- `content.ts` — Content script: `scanDocument()`, `collectColorProps()`, eyedropper integration
-- `useColor.ts` — Color parsing and distance comparison (OKLab/Redmean)
-- `popup.html` / `popup.css` — Popup markup and styles
+### Composables (stateful logic, `useX()` pattern)
+- `src/composables/useChrome/index.ts` — Chrome extension API wrapper (storage, tabs, scripting, messaging, windows)
+- `src/composables/useColorMatcher/index.ts` — Color matching and tiered comparison logic (`findMatches`, `isColorValue`)
+
+### Utilities (stateless helpers)
+- `src/utilities/colorParsing/index.ts` — Color parsing and OKLab distance comparison (`parseColor`, `parseLightDark`, `colorDistanceOklab`)
+- `src/utilities/scanner/index.ts` — Self-contained `scanFrameColorVariables()` (injected into page frames, no imports)
+- `src/utilities/popupRenderer/index.ts` — DOM rendering functions for popup UI (receives data + callbacks, no Chrome API calls)
+
+### Entry points
+- `src/entries/popup/index.ts` — Popup entry point: wires composables, utilities, and DOM event listeners
+- `src/utilities/eyedropperHandler/index.ts` — Content script: EyeDropper API integration, color picking
+- `src/utilities/panelWindowManager/index.ts` — Service worker: panel window lifecycle (open, focus, cleanup)
+
+### Other
+- `src/styles/popup.css` — Popup styles
+- `test/` — Shared test utilities (fixtures, chrome mock)
+- `src/**/__tests__/` — Tests co-located with their modules
+- `popup.html` — Popup markup
 - `manifest.json` — Extension manifest (V3)
+- `dist/` — Compiled JS output (gitignored)
 
 ## Key patterns
 
-- Two parallel scanning implementations exist: `scanFrameColorVariables()` in `popup.ts` (injected via `chrome.scripting.executeScript`) and `scanDocument()` in `content.ts` (content script). Changes to scanning logic must be applied to both.
-- The injected function in `popup.ts` must be fully self-contained — it cannot reference external functions.
+- Composables follow the `export function useX() { return { ... } }` pattern, encapsulating stateful or API-wrapping logic
+- Utilities are pure stateless helpers that can be imported anywhere
+- **Self-contained entry points**: The content script (`eyedropperHandler`), service worker (`panelWindowManager`), and scanner must not use `import` — Chrome loads content scripts as classic scripts and the service worker manifest lacks `"type": "module"`. Use `chrome.*` APIs directly in these files.
+- The popup entry point (`src/entries/popup/index.ts`) is loaded as an ES module (`<script type="module">`) and can import composables/utilities freely
 
 ## Scanning logic
 

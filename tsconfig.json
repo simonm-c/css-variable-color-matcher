@@ -5,7 +5,10 @@
     "moduleResolution": "node",
     "strict": true,
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "types": ["chrome-types"]
+    "types": ["chrome-types"],
+    "rootDir": "src",
+    "outDir": "dist"
   },
-  "include": ["*.ts"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "src/test/**", "vitest.config.ts", "vitest.config.integration.ts", "test/**"]
 }

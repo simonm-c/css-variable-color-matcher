@@ -1,7 +1,11 @@
+// Service worker — must be self-contained (no imports).
+// The manifest does not specify "type": "module", so imports are not available.
+
 let panelWindowId: number | undefined;
 
 chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
-  if (message.action === "open-panel") {
+  const msg = message as { action?: string };
+  if (msg.action === "open-panel") {
     openPanel();
   }
   return undefined;

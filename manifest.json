@@ -14,12 +14,12 @@
     }
   },
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "dist/utilities/panelWindowManager/index.js"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["dist/utilities/eyedropperHandler/index.js"]
     }
   ],
   "icons": {
