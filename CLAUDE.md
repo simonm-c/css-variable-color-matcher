@@ -1,6 +1,6 @@
 # CSS Variable Color Matcher
 
-Chrome extension that scans CSS `--color-*` custom properties from web pages and matches picked colors against them.
+Chrome extension that scans all CSS custom properties from web pages, filters to color values, and matches picked colors against them.
 
 ## Build
 
@@ -24,11 +24,11 @@ Chrome extension that scans CSS `--color-*` custom properties from web pages and
 
 ## Scanning logic
 
-The scanner collects `--color-*` CSS custom properties via three stages:
+The scanner collects all CSS custom properties (`--*`) via three stages, then filters to color values at display time using `parseColor()`/`parseLightDark()`:
 
 1. **Stylesheet rules** — iterates `document.styleSheets` and `document.adoptedStyleSheets`, recursing into nested rules (`@layer`, `@media`, `@supports`, etc.) via `"cssRules" in rule`
 2. **Computed value resolution** — for each discovered property, tries `querySelector(selector)` + `getComputedStyle()`, with fallback to `documentElement`
-3. **Inline styles** — walks all elements for JS-injected `--color-*` properties
+3. **Inline styles** — walks all elements for JS-injected custom properties
 
 ### Known target site structure (Tailwind v4 / Vite)
 
