@@ -1,4 +1,11 @@
-import { parseColor, parseLightDark, getColorChannels, colorDistanceRedmean } from "./useColor.js";
+import { parseColor, parseLightDark, colorDistanceOklab } from "./useColor.js";
+
+const EXACT_DISTANCE_THRESHOLD = 2;
+const CLOSE_MATCHES_COUNT = 5;
+
+function isColorValue(value: string): boolean {
+  return parseColor(value) !== null || parseLightDark(value) !== null;
+}
 
 const scanBtn = document.getElementById("scan-btn") as HTMLButtonElement;
 const pickBtn = document.getElementById("pick-btn") as HTMLButtonElement;
@@ -240,7 +247,7 @@ function renderSavedLists(
 
   for (const name of names) {
     const vars = lists[name];
-    const count = Object.values(vars).filter((v) => parseColor(v) || parseLightDark(v)).length;
+    const count = Object.values(vars).filter(isColorValue).length;
 
     const isActive = name === activeList;
 
@@ -272,7 +279,9 @@ function renderSavedLists(
     countEl.textContent = `(${count})`;
 
     const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
     deleteBtn.className = "saved-list-delete";
+    deleteBtn.ariaLabel = `Delete list "${name}"`;
     deleteBtn.innerHTML =
       '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7 21q-.825 0-1.412-.587T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.587 1.413T17 21zM17 6H7v13h10zM9 17h2V8H9zm4 0h2V8h-2zM7 6v13z"/></svg>';
     deleteBtn.addEventListener("click", () => {
@@ -317,11 +326,15 @@ pickBtn.addEventListener("click", async (event) => {
     await chrome.tabs.sendMessage(tab.id, msg);
   } catch {
     // Content script not yet injected (e.g. tab was open before extension installed)
-    await chrome.scripting.executeScript({
-      target: { tabId: tab.id },
-      files: ["content.js"],
-    });
-    await chrome.tabs.sendMessage(tab.id, msg);
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        files: ["content.js"],
+      });
+      await chrome.tabs.sendMessage(tab.id, msg);
+    } catch {
+      // Injection failed (chrome:// pages, PDF viewers, etc.)
+    }
   }
 });
 
@@ -329,9 +342,7 @@ function displayColorVariables(vars: Record<string, string>): void {
   currentVars = vars;
   varsListEl.innerHTML = "";
 
-  const allEntries = Object.entries(vars).filter(
-    ([, value]) => parseColor(value) || parseLightDark(value),
-  );
+  const allEntries = Object.entries(vars).filter(([, value]) => isColorValue(value));
   if (allEntries.length === 0) {
     varsSummaryEl.textContent = "Color Variables (0)";
     varsSearchEl.parentElement!.style.display = "none";
@@ -413,14 +424,12 @@ function displayPickedColors(colors: string[]): void {
       resultsEl.appendChild(header);
 
       // Compare against all stored variables
-      const pickedChannels = getColorChannels(pickedColor, hex);
       const matches: ColorMatch[] = [];
 
       for (const [name, value] of Object.entries(vars)) {
         const varColor = parseColor(value);
         if (varColor) {
-          const varChannels = getColorChannels(varColor, value);
-          const distance = colorDistanceRedmean(pickedChannels, varChannels);
+          const distance = colorDistanceOklab(pickedColor, varColor);
           matches.push({ name, value, distance });
           continue;
         }
@@ -432,12 +441,8 @@ function displayPickedColors(colors: string[]): void {
         const darkColor = parseColor(ld.dark);
         if (!lightColor && !darkColor) continue;
 
-        const lightDist = lightColor
-          ? colorDistanceRedmean(pickedChannels, getColorChannels(lightColor, ld.light))
-          : Infinity;
-        const darkDist = darkColor
-          ? colorDistanceRedmean(pickedChannels, getColorChannels(darkColor, ld.dark))
-          : Infinity;
+        const lightDist = lightColor ? colorDistanceOklab(pickedColor, lightColor) : Infinity;
+        const darkDist = darkColor ? colorDistanceOklab(pickedColor, darkColor) : Infinity;
 
         matches.push({
           name,
@@ -457,14 +462,17 @@ function displayPickedColors(colors: string[]): void {
         continue;
       }
 
-      // Split into tiers: exact (rounds to 0 or 1), close, far
-      const exact = matches.filter((m) => Math.round(m.distance) <= 2);
-      const rest = matches.filter((m) => Math.round(m.distance) > 2);
+      // Split into tiers: exact, close, far
+      const exact = matches.filter((m) => Math.round(m.distance) <= EXACT_DISTANCE_THRESHOLD);
+      const rest = matches.filter((m) => Math.round(m.distance) > EXACT_DISTANCE_THRESHOLD);
 
       // Show all exact matches, then ~5 close, then ~5 far
-      const closeCount = Math.max(5, exact.length > 5 ? 0 : 5);
+      const closeCount = Math.max(
+        CLOSE_MATCHES_COUNT,
+        exact.length > CLOSE_MATCHES_COUNT ? 0 : CLOSE_MATCHES_COUNT,
+      );
       const close = rest.slice(0, closeCount);
-      const far = rest.slice(closeCount, closeCount + 5);
+      const far = rest.slice(closeCount, closeCount + CLOSE_MATCHES_COUNT);
 
       for (const match of exact) {
         resultsEl.appendChild(createMatchEntry(match, "match-exact"));
@@ -505,7 +513,9 @@ function createMatchEntry(match: ColorMatch, tier: string): HTMLDivElement {
 
   if (match.lightDark) {
     const { light, dark, lightDist, darkDist } = match.lightDark;
-    const bothExact = Math.round(lightDist) <= 2 && Math.round(darkDist) <= 2;
+    const bothExact =
+      Math.round(lightDist) <= EXACT_DISTANCE_THRESHOLD &&
+      Math.round(darkDist) <= EXACT_DISTANCE_THRESHOLD;
 
     // Swatch shows the closer-matching color
     swatch.style.backgroundColor = lightDist <= darkDist ? light : dark;
@@ -516,7 +526,7 @@ function createMatchEntry(match: ColorMatch, tier: string): HTMLDivElement {
     } else {
       // Highlight the matching side(s)
       const lightClass =
-        Math.round(lightDist) <= 2
+        Math.round(lightDist) <= EXACT_DISTANCE_THRESHOLD
           ? "ld-match"
           : lightDist < Infinity
             ? lightDist <= darkDist
@@ -524,7 +534,7 @@ function createMatchEntry(match: ColorMatch, tier: string): HTMLDivElement {
               : "ld-dim"
             : "ld-dim";
       const darkClass =
-        Math.round(darkDist) <= 2
+        Math.round(darkDist) <= EXACT_DISTANCE_THRESHOLD
           ? "ld-match"
           : darkDist < Infinity
             ? darkDist <= lightDist

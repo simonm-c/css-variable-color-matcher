@@ -7,19 +7,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const dropper = new EyeDropper();
     dropper
       .open()
-      .then((result) => {
+      .then(async (result) => {
         const hex = result.sRGBHex;
         if (message.append) {
-          chrome.storage.local.get("pickedColors", (data) => {
-            const colors: string[] = data.pickedColors ?? [];
-            colors.push(hex);
-            chrome.storage.local.set({ pickedColors: colors });
-            sendResponse({ color: hex });
-          });
+          const data = await chrome.storage.local.get("pickedColors");
+          const colors: string[] = data.pickedColors ?? [];
+          colors.push(hex);
+          await chrome.storage.local.set({ pickedColors: colors });
         } else {
-          chrome.storage.local.set({ pickedColors: [hex] });
-          sendResponse({ color: hex });
+          await chrome.storage.local.set({ pickedColors: [hex] });
         }
+        sendResponse({ color: hex });
       })
       .catch(() => {
         sendResponse({ color: null });
