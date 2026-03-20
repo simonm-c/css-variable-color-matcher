@@ -244,7 +244,7 @@ function splitArgs(inner: string): string[] {
     .filter((s) => s.length > 0);
 }
 
-function parseColor(css: string): OklabColor | null {
+export function parseColor(css: string): OklabColor | null {
   const s = css.trim().toLowerCase();
 
   // Hex
@@ -367,7 +367,7 @@ function parseColor(css: string): OklabColor | null {
   return null;
 }
 
-function parseLightDark(css: string): { light: string; dark: string } | null {
+export function parseLightDark(css: string): { light: string; dark: string } | null {
   const s = css.trim();
   const match = s.match(/^light-dark\((.+)\)$/i);
   if (!match) return null;
@@ -396,13 +396,9 @@ function parseLightDark(css: string): { light: string; dark: string } | null {
 
 // --- Public API ---
 
-function colorDistanceOklab(a: OklabColor, b: OklabColor): number {
-  return Math.sqrt((a.L - b.L) ** 2 + (a.a - b.a) ** 2 + (a.b - b.b) ** 2);
-}
-
 // Extract sRGB 0–255 channels, parsing directly from the CSS source when
 // the format already carries R/G/B, otherwise converting via OKLab → sRGB.
-function getColorChannels(color: OklabColor, cssSource?: string): RgbChannels {
+export function getColorChannels(color: OklabColor, cssSource?: string): RgbChannels {
   if (cssSource) {
     const s = cssSource.trim().toLowerCase();
 
@@ -514,25 +510,10 @@ function getColorChannels(color: OklabColor, cssSource?: string): RgbChannels {
 
 // Compuphase redmean weighted color distance approximation
 // https://www.compuphase.com/cmetric.htm
-function colorDistanceRedmean(a: RgbChannels, b: RgbChannels): number {
+export function colorDistanceRedmean(a: RgbChannels, b: RgbChannels): number {
   const rmean = (a.r + b.r) / 2;
   const dr = a.r - b.r;
   const dg = a.g - b.g;
   const db = a.b - b.b;
   return Math.sqrt(((512 + rmean) * dr * dr) / 256 + 4 * dg * dg + ((767 - rmean) * db * db) / 256);
-}
-
-function oklabToHex(color: OklabColor): string {
-  const [lr, lg, lb] = oklabToLinearSrgb(color.L, color.a, color.b);
-  const r = Math.round(clamp(linearToSrgb(lr), 0, 1) * 255);
-  const g = Math.round(clamp(linearToSrgb(lg), 0, 1) * 255);
-  const b = Math.round(clamp(linearToSrgb(lb), 0, 1) * 255);
-
-  const hex = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-
-  if (color.alpha < 1) {
-    const a = Math.round(clamp(color.alpha, 0, 1) * 255);
-    return hex + a.toString(16).padStart(2, "0");
-  }
-  return hex;
 }

@@ -1,3 +1,5 @@
+import { parseColor, parseLightDark, getColorChannels, colorDistanceRedmean } from "./useColor.js";
+
 const scanBtn = document.getElementById("scan-btn") as HTMLButtonElement;
 const pickBtn = document.getElementById("pick-btn") as HTMLButtonElement;
 const resultsEl = document.getElementById("results") as HTMLDivElement;
@@ -74,7 +76,7 @@ function scanFrameColorVariables(): Record<string, string> {
   const vars: Record<string, string> = {};
   if (!document.documentElement) return vars;
 
-  // Collect --color-* property names and their declaring selectors from stylesheets
+  // Collect custom property names and their declaring selectors from stylesheets
   const propSelectors = new Map<string, Set<string>>();
 
   function collectFromRules(rules: CSSRuleList, parentSelector?: string): void {
@@ -82,7 +84,7 @@ function scanFrameColorVariables(): Record<string, string> {
       if (rule instanceof CSSStyleRule) {
         for (let i = 0; i < rule.style.length; i++) {
           const prop = rule.style[i];
-          if (prop.startsWith("--color-")) {
+          if (prop.startsWith("--")) {
             let selectors = propSelectors.get(prop);
             if (!selectors) {
               selectors = new Set();
@@ -105,7 +107,7 @@ function scanFrameColorVariables(): Record<string, string> {
           const style = (rule as unknown as CSSStyleRule).style;
           for (let i = 0; i < style.length; i++) {
             const prop = style[i];
-            if (prop.startsWith("--color-")) {
+            if (prop.startsWith("--")) {
               let selectors = propSelectors.get(prop);
               if (!selectors) {
                 selectors = new Set();
@@ -170,7 +172,7 @@ function scanFrameColorVariables(): Record<string, string> {
 
   // Walk all elements once for two purposes:
   // 1. Find computed values for stylesheet properties that selectors couldn't resolve
-  // 2. Pick up inline-style --color-* properties (JS-injected variables)
+  // 2. Pick up inline-style custom properties (JS-injected variables)
   const unresolved = [...propSelectors.keys()].filter((p) => !vars[p]);
 
   for (const el of document.querySelectorAll("*")) {
@@ -186,12 +188,12 @@ function scanFrameColorVariables(): Record<string, string> {
       }
     }
 
-    // Check inline styles for JS-injected --color-* variables
+    // Check inline styles for JS-injected custom properties
     const style = (el as HTMLElement).style;
     if (!style) continue;
     for (let i = 0; i < style.length; i++) {
       const prop = style[i];
-      if (prop.startsWith("--color-") && !vars[prop]) {
+      if (prop.startsWith("--") && !vars[prop]) {
         const value = style.getPropertyValue(prop).trim();
         if (value) vars[prop] = value;
       }
@@ -238,7 +240,7 @@ function renderSavedLists(
 
   for (const name of names) {
     const vars = lists[name];
-    const count = Object.keys(vars).length;
+    const count = Object.values(vars).filter((v) => parseColor(v) || parseLightDark(v)).length;
 
     const isActive = name === activeList;
 
@@ -327,13 +329,15 @@ function displayColorVariables(vars: Record<string, string>): void {
   currentVars = vars;
   varsListEl.innerHTML = "";
 
-  const allEntries = Object.entries(vars);
+  const allEntries = Object.entries(vars).filter(
+    ([, value]) => parseColor(value) || parseLightDark(value),
+  );
   if (allEntries.length === 0) {
     varsSummaryEl.textContent = "Color Variables (0)";
     varsSearchEl.parentElement!.style.display = "none";
     const msg = document.createElement("p");
     msg.id = "no-vars-msg";
-    msg.textContent = "No --color-* variables found on this page.";
+    msg.textContent = "No color variables found on this page.";
     varsListEl.appendChild(msg);
     return;
   }
