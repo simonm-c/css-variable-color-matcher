@@ -1,0 +1,10 @@
+# Dependencies
+node_modules/
+
+# Compiled output
+dist/
+*.js
+!*.config.js
+
+# IDE
+.idea/

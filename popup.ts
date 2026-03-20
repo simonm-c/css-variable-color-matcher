@@ -1,0 +1,415 @@
+const scanBtn = document.getElementById("scan-btn") as HTMLButtonElement;
+const pickBtn = document.getElementById("pick-btn") as HTMLButtonElement;
+const resultsEl = document.getElementById("results") as HTMLDivElement;
+const varsSummaryEl = document.getElementById("vars-summary") as HTMLElement;
+const varsListEl = document.getElementById("vars-list") as HTMLDivElement;
+const saveBtn = document.getElementById("save-btn") as HTMLButtonElement;
+const listNameInput = document.getElementById("list-name") as HTMLInputElement;
+const savedListsEl = document.getElementById("saved-lists") as HTMLDivElement;
+
+// Display cached color variables and saved lists on popup open
+chrome.storage.local.get(["colorVariables", "savedLists", "activeList"], (data) => {
+  const vars: Record<string, string> = data.colorVariables ?? {};
+  displayColorVariables(vars);
+  renderSavedLists(data.savedLists ?? {}, data.activeList ?? null);
+});
+
+scanBtn.addEventListener("click", async () => {
+  const [tab] = await chrome.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
+  if (!tab?.id) return;
+
+  scanBtn.disabled = true;
+  scanBtn.textContent = "Scanning...";
+
+  try {
+    // Execute in ALL frames so each frame scans its own stylesheets directly
+    // (avoids cross-frame DOM access issues with iframe.contentDocument)
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id, allFrames: true },
+      func: scanFrameColorVariables,
+    });
+
+    const merged: Record<string, string> = {};
+    for (const result of results) {
+      if (result.result) {
+        Object.assign(merged, result.result);
+      }
+    }
+
+    chrome.storage.local.set({ colorVariables: merged });
+    displayColorVariables(merged);
+  } finally {
+    scanBtn.disabled = false;
+    scanBtn.textContent = "Scan Page Variables";
+  }
+});
+
+// Self-contained scanning function injected into each frame via executeScript.
+// Cannot reference external functions — must be fully standalone.
+function scanFrameColorVariables(): Record<string, string> {
+  const vars: Record<string, string> = {};
+  if (!document.documentElement) return vars;
+
+  // Collect --color-* property names and their declaring selectors from stylesheets
+  const propSelectors = new Map<string, Set<string>>();
+
+  function collectFromRules(rules: CSSRuleList): void {
+    for (const rule of rules) {
+      if (rule instanceof CSSStyleRule) {
+        for (let i = 0; i < rule.style.length; i++) {
+          const prop = rule.style[i];
+          if (prop.startsWith("--color-")) {
+            let selectors = propSelectors.get(prop);
+            if (!selectors) {
+              selectors = new Set();
+              propSelectors.set(prop, selectors);
+            }
+            selectors.add(rule.selectorText);
+          }
+        }
+      }
+      if ("cssRules" in rule) {
+        try {
+          collectFromRules((rule as CSSGroupingRule).cssRules);
+        } catch {
+          // Skip inaccessible nested rules
+        }
+      }
+    }
+  }
+
+  for (const sheet of document.styleSheets) {
+    try {
+      collectFromRules(sheet.cssRules);
+    } catch {
+      // Skip cross-origin stylesheets
+    }
+  }
+
+  // Resolve each property against a matching element
+  for (const [prop, selectors] of propSelectors) {
+    for (const selector of selectors) {
+      try {
+        const el = document.querySelector(selector);
+        if (el) {
+          const value = getComputedStyle(el).getPropertyValue(prop).trim();
+          if (value) {
+            vars[prop] = value;
+            break;
+          }
+        }
+      } catch {
+        // Invalid selector
+      }
+    }
+    // Fallback: resolve against documentElement
+    if (!vars[prop]) {
+      const value = getComputedStyle(document.documentElement).getPropertyValue(prop).trim();
+      if (value) vars[prop] = value;
+    }
+  }
+
+  // Walk all elements once for two purposes:
+  // 1. Find computed values for stylesheet properties that selectors couldn't resolve
+  // 2. Pick up inline-style --color-* properties (JS-injected variables)
+  const unresolved = [...propSelectors.keys()].filter((p) => !vars[p]);
+
+  for (const el of document.querySelectorAll("*")) {
+    // Check computed style for unresolved stylesheet properties
+    if (unresolved.length > 0) {
+      const computed = getComputedStyle(el);
+      for (let i = unresolved.length - 1; i >= 0; i--) {
+        const value = computed.getPropertyValue(unresolved[i]).trim();
+        if (value) {
+          vars[unresolved[i]] = value;
+          unresolved.splice(i, 1);
+        }
+      }
+    }
+
+    // Check inline styles for JS-injected --color-* variables
+    const style = (el as HTMLElement).style;
+    if (!style) continue;
+    for (let i = 0; i < style.length; i++) {
+      const prop = style[i];
+      if (prop.startsWith("--color-") && !vars[prop]) {
+        const value = style.getPropertyValue(prop).trim();
+        if (value) vars[prop] = value;
+      }
+    }
+  }
+
+  return vars;
+}
+
+// Display previously picked colors on popup open
+chrome.storage.local.get("pickedColors", (data) => {
+  const colors: string[] = data.pickedColors ?? [];
+  if (colors.length > 0) {
+    displayPickedColors(colors);
+  }
+});
+
+// Save current variables as a named list
+saveBtn.addEventListener("click", () => {
+  const name = listNameInput.value.trim();
+  if (!name) return;
+
+  chrome.storage.local.get(["colorVariables", "savedLists"], (data) => {
+    const vars: Record<string, string> = data.colorVariables ?? {};
+    if (Object.keys(vars).length === 0) return;
+
+    const lists: Record<string, Record<string, string>> = data.savedLists ?? {};
+    lists[name] = vars;
+
+    chrome.storage.local.set({ savedLists: lists, activeList: name }, () => {
+      listNameInput.value = "";
+      renderSavedLists(lists, name);
+    });
+  });
+});
+
+function renderSavedLists(
+  lists: Record<string, Record<string, string>>,
+  activeList: string | null,
+): void {
+  savedListsEl.innerHTML = "";
+  const names = Object.keys(lists);
+  if (names.length === 0) return;
+
+  for (const name of names) {
+    const vars = lists[name];
+    const count = Object.keys(vars).length;
+
+    const isActive = name === activeList;
+
+    const entry = document.createElement("div");
+    entry.className = `saved-list-entry${isActive ? " active" : ""}`;
+    entry.style.cursor = "pointer";
+
+    // Click entry to toggle active list
+    entry.addEventListener("click", (e) => {
+      if ((e.target as HTMLElement).closest(".saved-list-delete")) return;
+      const newActive = isActive ? null : name;
+      const newVars = isActive ? {} : vars;
+      chrome.storage.local.set({ colorVariables: newVars, activeList: newActive }, () => {
+        displayColorVariables(newVars);
+        renderSavedLists(lists, newActive);
+        chrome.storage.local.get("pickedColors", (data) => {
+          const colors: string[] = data.pickedColors ?? [];
+          if (colors.length > 0) displayPickedColors(colors);
+        });
+      });
+    });
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "saved-list-name";
+    nameEl.textContent = name;
+
+    const countEl = document.createElement("span");
+    countEl.className = "saved-list-count";
+    countEl.textContent = `(${count})`;
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "saved-list-delete";
+    deleteBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7 21q-.825 0-1.412-.587T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.587 1.413T17 21zM17 6H7v13h10zM9 17h2V8H9zm4 0h2V8h-2zM7 6v13z"/></svg>';
+    deleteBtn.addEventListener("click", () => {
+      delete lists[name];
+      const newActive = isActive ? null : activeList;
+      chrome.storage.local.set({ savedLists: lists, activeList: newActive }, () => {
+        renderSavedLists(lists, newActive);
+      });
+    });
+
+    entry.appendChild(nameEl);
+    entry.appendChild(countEl);
+    entry.appendChild(deleteBtn);
+    savedListsEl.appendChild(entry);
+  }
+}
+
+// Update display if colors change while popup is still open
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.colorVariables?.newValue) {
+    displayColorVariables(changes.colorVariables.newValue);
+  }
+  if (changes.pickedColors?.newValue) {
+    displayPickedColors(changes.pickedColors.newValue);
+  }
+  if (changes.savedLists || changes.activeList) {
+    chrome.storage.local.get(["savedLists", "activeList"], (data) => {
+      renderSavedLists(data.savedLists ?? {}, data.activeList ?? null);
+    });
+  }
+});
+
+pickBtn.addEventListener("click", async (event) => {
+  const append = event.shiftKey;
+
+  const [tab] = await chrome.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
+  if (!tab?.id) return;
+
+  const msg = { action: "start-eyedropper", append };
+
+  try {
+    await chrome.tabs.sendMessage(tab.id, msg);
+  } catch {
+    // Content script not yet injected (e.g. tab was open before extension installed)
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ["content.js"],
+    });
+    await chrome.tabs.sendMessage(tab.id, msg);
+  }
+});
+
+function displayColorVariables(vars: Record<string, string>): void {
+  varsListEl.innerHTML = "";
+
+  const entries = Object.entries(vars);
+  if (entries.length === 0) {
+    varsSummaryEl.textContent = "Color Variables (0)";
+    const msg = document.createElement("p");
+    msg.id = "no-vars-msg";
+    msg.textContent = "No --color-* variables found on this page.";
+    varsListEl.appendChild(msg);
+    return;
+  }
+
+  varsSummaryEl.textContent = `Color Variables (${entries.length})`;
+
+  for (const [name, value] of entries) {
+    const entry = document.createElement("div");
+    entry.className = "var-entry";
+
+    const swatch = document.createElement("div");
+    swatch.className = "var-swatch";
+    swatch.style.backgroundColor = value;
+
+    const info = document.createElement("div");
+    info.className = "var-info";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "var-name";
+    nameEl.textContent = name;
+
+    const valueEl = document.createElement("div");
+    valueEl.className = "var-value";
+    valueEl.textContent = value;
+
+    info.appendChild(nameEl);
+    info.appendChild(valueEl);
+    entry.appendChild(swatch);
+    entry.appendChild(info);
+    varsListEl.appendChild(entry);
+  }
+}
+
+function displayPickedColors(colors: string[]): void {
+  resultsEl.innerHTML = "";
+
+  chrome.storage.local.get("colorVariables", (data) => {
+    const vars: Record<string, string> = data.colorVariables ?? {};
+
+    for (const hex of colors) {
+      const pickedColor = parseColor(hex);
+      if (!pickedColor) continue;
+
+      // Picked color header
+      const header = document.createElement("div");
+      header.className = "color-entry picked-header";
+
+      const swatch = document.createElement("div");
+      swatch.className = "color-swatch";
+      swatch.style.backgroundColor = hex;
+
+      const info = document.createElement("div");
+      info.className = "color-info";
+
+      const valueEl = document.createElement("div");
+      valueEl.className = "color-value";
+      valueEl.textContent = hex;
+
+      info.appendChild(valueEl);
+      header.appendChild(swatch);
+      header.appendChild(info);
+      resultsEl.appendChild(header);
+
+      // Compare against all stored variables
+      const pickedChannels = getColorChannels(pickedColor, hex);
+      const matches: { name: string; value: string; distance: number }[] = [];
+
+      for (const [name, value] of Object.entries(vars)) {
+        const varColor = parseColor(value);
+        if (!varColor) continue;
+        const varChannels = getColorChannels(varColor, value);
+        const distance = colorDistanceRedmean(pickedChannels, varChannels);
+        matches.push({ name, value, distance });
+      }
+
+      matches.sort((a, b) => a.distance - b.distance);
+
+      if (matches.length === 0) {
+        const msg = document.createElement("p");
+        msg.className = "no-matches-msg";
+        msg.textContent = "No variables to compare. Scan the page first.";
+        resultsEl.appendChild(msg);
+        continue;
+      }
+
+      // Split into tiers: exact (rounds to 0 or 1), close, far
+      const exact = matches.filter((m) => Math.round(m.distance) <= 1);
+      const rest = matches.filter((m) => Math.round(m.distance) > 1);
+
+      // Show all exact matches, then ~5 close, then ~5 far
+      const closeCount = Math.max(5, exact.length > 5 ? 0 : 5);
+      const close = rest.slice(0, closeCount);
+      const far = rest.slice(closeCount, closeCount + 5);
+
+      for (const match of exact) {
+        resultsEl.appendChild(createMatchEntry(match, "match-exact"));
+      }
+      for (const match of close) {
+        resultsEl.appendChild(createMatchEntry(match, "match-close"));
+      }
+      for (const match of far) {
+        resultsEl.appendChild(createMatchEntry(match, "match-far"));
+      }
+    }
+  });
+}
+
+function createMatchEntry(
+  match: { name: string; value: string; distance: number },
+  tier: string,
+): HTMLDivElement {
+  const entry = document.createElement("div");
+  entry.className = `match-entry ${tier}`;
+
+  const swatch = document.createElement("div");
+  swatch.className = "match-swatch";
+  swatch.style.backgroundColor = match.value;
+
+  const info = document.createElement("div");
+  info.className = "match-info";
+
+  const nameEl = document.createElement("div");
+  nameEl.className = "match-name";
+  nameEl.textContent = match.name;
+
+  const valueEl = document.createElement("div");
+  valueEl.className = "match-value";
+  valueEl.textContent = `${match.value} — distance: ${Math.round(match.distance)}`;
+
+  info.appendChild(nameEl);
+  info.appendChild(valueEl);
+  entry.appendChild(swatch);
+  entry.appendChild(info);
+  return entry;
+}
