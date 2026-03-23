@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCssCustomProperties } from "../index.ts";
+import { parseCssCustomProperties, deduplicateVariables } from "../index.ts";
 
 describe("parseCssCustomProperties", () => {
   it("parses simple :root block", () => {
@@ -96,5 +96,48 @@ describe("parseCssCustomProperties", () => {
     const css = `:root { --no-semicolon: red }`;
     const result = parseCssCustomProperties(css);
     expect(result).toEqual([{ name: "--no-semicolon", value: "red" }]);
+  });
+});
+
+describe("deduplicateVariables", () => {
+  it("removes exact duplicates (same name + same value)", () => {
+    const result = deduplicateVariables([
+      { name: "--a", value: "red" },
+      { name: "--a", value: "red" },
+      { name: "--b", value: "blue" },
+    ]);
+    expect(result).toEqual([
+      { name: "--a", value: "red" },
+      { name: "--b", value: "blue" },
+    ]);
+  });
+
+  it("keeps entries with same name but different values", () => {
+    const result = deduplicateVariables([
+      { name: "--a", value: "red" },
+      { name: "--a", value: "blue" },
+    ]);
+    expect(result).toEqual([
+      { name: "--a", value: "red" },
+      { name: "--a", value: "blue" },
+    ]);
+  });
+
+  it("returns empty array for empty input", () => {
+    expect(deduplicateVariables([])).toEqual([]);
+  });
+
+  it("preserves insertion order", () => {
+    const result = deduplicateVariables([
+      { name: "--c", value: "3" },
+      { name: "--a", value: "1" },
+      { name: "--b", value: "2" },
+      { name: "--a", value: "1" },
+    ]);
+    expect(result).toEqual([
+      { name: "--c", value: "3" },
+      { name: "--a", value: "1" },
+      { name: "--b", value: "2" },
+    ]);
   });
 });

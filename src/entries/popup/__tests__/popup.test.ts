@@ -314,4 +314,80 @@ describe("popup entry point", () => {
       expect(importBtn).not.toBeNull();
     });
   });
+
+  describe("normalizeVars (old format migration)", () => {
+    it("handles old Record<string,string> format via storage change", () => {
+      const changeListener = chromeMock.storage.onChanged.addListener.mock.calls[0][0];
+      changeListener({
+        colorVariables: {
+          newValue: { "--old-var": "#ff0000", "--another": "#00ff00" },
+        },
+      });
+
+      const varsList = document.getElementById("vars-list")!;
+      const entries = varsList.querySelectorAll(".var-entry");
+      expect(entries.length).toBe(2);
+    });
+
+    it("filters out invalid array entries from storage", () => {
+      const changeListener = chromeMock.storage.onChanged.addListener.mock.calls[0][0];
+      changeListener({
+        colorVariables: {
+          newValue: [
+            { name: "--valid", value: "#ff0000" },
+            "not-an-object",
+            { name: 123, value: "#00ff00" },
+            null,
+            { name: "--also-valid", value: "#0000ff" },
+          ],
+        },
+      });
+
+      const varsList = document.getElementById("vars-list")!;
+      const entries = varsList.querySelectorAll(".var-entry");
+      expect(entries.length).toBe(2);
+    });
+  });
+
+  describe("rename list", () => {
+    it("re-reads storage before renaming to avoid race conditions", async () => {
+      // Set up initial saved lists
+      chromeMock._setStorage({
+        savedLists: {
+          "Old Name": [{ name: "--brand", value: "#ff0000" }],
+        },
+        activeList: "Old Name",
+      });
+
+      // Re-import to pick up the new storage state
+      vi.resetModules();
+      setupDOM();
+      await import("../index.ts");
+
+      const getCallsBefore = chromeMock.storage.local.get.mock.calls.length;
+
+      // Find the rename button and trigger rename flow
+      const savedListsEl = document.getElementById("saved-lists")!;
+      const renameBtn = savedListsEl.querySelector(".saved-list-rename") as HTMLButtonElement;
+      if (renameBtn) {
+        renameBtn.click();
+
+        const input = savedListsEl.querySelector(".saved-list-name-input") as HTMLInputElement;
+        if (input) {
+          input.value = "New Name";
+          input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+
+          // Verify storage was re-read (not just using stale closure)
+          await vi.waitFor(() => {
+            const getCalls = chromeMock.storage.local.get.mock.calls.slice(getCallsBefore);
+            const renameFetchedFresh = getCalls.some((call: unknown[]) => {
+              const keys = call[0];
+              return Array.isArray(keys) && keys.includes("savedLists");
+            });
+            expect(renameFetchedFresh).toBe(true);
+          });
+        }
+      }
+    });
+  });
 });

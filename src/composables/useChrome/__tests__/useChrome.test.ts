@@ -102,4 +102,43 @@ describe("useChrome", () => {
       expect(chromeMock.windows.onRemoved.addListener).toHaveBeenCalledWith(cb);
     });
   });
+
+  describe("scanTabColorVariables", () => {
+    const { scanTabColorVariables } = useChrome();
+
+    it("retrieval function cleans up __cssVarScanResult from globalThis", async () => {
+      chromeMock.scripting.executeScript
+        .mockResolvedValueOnce([{ result: undefined }]) // file injection
+        .mockResolvedValueOnce([{ result: [] }]); // func retrieval
+
+      await scanTabColorVariables(1);
+
+      // The second call is the func retrieval — extract and run it to verify cleanup
+      const funcCall = chromeMock.scripting.executeScript.mock.calls[1][0];
+      expect(funcCall).toHaveProperty("func");
+
+      // Simulate what the func does: set the global, then run the func
+      (globalThis as Record<string, unknown>).__cssVarScanResult = [
+        { name: "--test", value: "red" },
+      ];
+      funcCall.func();
+      expect((globalThis as Record<string, unknown>).__cssVarScanResult).toBeUndefined();
+    });
+
+    it("deduplicates results across frames", async () => {
+      chromeMock.scripting.executeScript
+        .mockResolvedValueOnce([{ result: undefined }])
+        .mockResolvedValueOnce([
+          { result: [{ name: "--a", value: "red" }, { name: "--b", value: "blue" }] },
+          { result: [{ name: "--a", value: "red" }, { name: "--c", value: "green" }] },
+        ]);
+
+      const result = await scanTabColorVariables(1);
+      expect(result).toEqual([
+        { name: "--a", value: "red" },
+        { name: "--b", value: "blue" },
+        { name: "--c", value: "green" },
+      ]);
+    });
+  });
 });

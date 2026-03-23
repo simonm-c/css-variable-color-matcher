@@ -14,7 +14,7 @@ const configs = [
     entryPoints: ["src/utilities/scanner/inject.ts"],
     outfile: "dist/utilities/scanner/inject.js",
     bundle: true,
-    format: "esm",
+    format: "iife",
   },
   {
     entryPoints: ["src/utilities/eyedropperHandler/index.ts"],
