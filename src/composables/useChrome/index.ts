@@ -1,3 +1,4 @@
+import { deduplicateVariables } from "../../utilities/cssParser/index.js";
 import type { ColorVariable } from "../../utilities/cssParser/index.js";
 
 export type { ColorVariable };
@@ -110,6 +111,20 @@ function onWindowRemoved(callback: (windowId: number) => void): void {
   chrome.windows.onRemoved.addListener(callback);
 }
 
+async function scanTabColorVariables(tabId: number): Promise<ColorVariable[]> {
+  await executeFileInFrames(tabId, "dist/utilities/scanner/inject.js");
+  const results = await executeScriptInFrames(tabId, () => {
+    return (globalThis as Record<string, unknown>).__cssVarScanResult;
+  });
+  const allVars: ColorVariable[] = [];
+  for (const result of results) {
+    if (result.result && Array.isArray(result.result)) {
+      allVars.push(...(result.result as ColorVariable[]));
+    }
+  }
+  return deduplicateVariables(allVars);
+}
+
 export function useChrome() {
   return {
     getStorage,
@@ -125,5 +140,6 @@ export function useChrome() {
     createWindow,
     updateWindow,
     onWindowRemoved,
+    scanTabColorVariables,
   };
 }

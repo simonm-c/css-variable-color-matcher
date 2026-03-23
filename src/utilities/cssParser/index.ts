@@ -3,6 +3,19 @@ export interface ColorVariable {
   value: string;
 }
 
+export function deduplicateVariables(vars: ColorVariable[]): ColorVariable[] {
+  const seen = new Set<string>();
+  const result: ColorVariable[] = [];
+  for (const v of vars) {
+    const key = `${v.name}\0${v.value}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(v);
+    }
+  }
+  return result;
+}
+
 /**
  * Parse CSS text and extract all custom property declarations (--*).
  * Handles nested @-rules (@layer, @media, @supports, etc.) and strips comments.
@@ -55,38 +68,35 @@ export function parseCssCustomProperties(cssText: string): ColorVariable[] {
 }
 
 function stripComments(text: string): string {
-  let result = "";
+  const segments: string[] = [];
+  let segStart = 0;
   let i = 0;
   while (i < text.length) {
     if (text[i] === "/" && text[i + 1] === "*") {
+      segments.push(text.slice(segStart, i));
       i += 2;
       while (i < text.length && !(text[i] === "*" && text[i + 1] === "/")) {
         i++;
       }
       i += 2; // skip */
+      segStart = i;
       continue;
     }
     // Skip string literals (don't strip "/*" inside strings)
     if (text[i] === '"' || text[i] === "'") {
       const quote = text[i];
-      result += quote;
       i++;
       while (i < text.length && text[i] !== quote) {
-        if (text[i] === "\\") {
-          result += text[i++];
-        }
-        if (i < text.length) {
-          result += text[i++];
-        }
+        if (text[i] === "\\") i++; // skip escaped char
+        i++;
       }
-      if (i < text.length) {
-        result += text[i++]; // closing quote
-      }
+      if (i < text.length) i++; // closing quote
       continue;
     }
-    result += text[i++];
+    i++;
   }
-  return result;
+  segments.push(text.slice(segStart, i));
+  return segments.join("");
 }
 
 function isWhitespace(ch: string): boolean {

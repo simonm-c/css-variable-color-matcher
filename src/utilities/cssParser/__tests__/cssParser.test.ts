@@ -3,7 +3,9 @@ import { parseCssCustomProperties } from "../index.ts";
 
 describe("parseCssCustomProperties", () => {
   it("parses simple :root block", () => {
-    const result = parseCssCustomProperties(`:root { --color-red: #ff0000; --color-blue: #0000ff; }`);
+    const result = parseCssCustomProperties(
+      `:root { --color-red: #ff0000; --color-blue: #0000ff; }`,
+    );
     expect(result).toEqual([
       { name: "--color-red", value: "#ff0000" },
       { name: "--color-blue", value: "#0000ff" },
@@ -57,9 +59,7 @@ describe("parseCssCustomProperties", () => {
   it("handles values with url()", () => {
     const css = `:root { --bg-image: url("data:image/svg+xml;base64,abc"); }`;
     const result = parseCssCustomProperties(css);
-    expect(result).toEqual([
-      { name: "--bg-image", value: 'url("data:image/svg+xml;base64,abc")' },
-    ]);
+    expect(result).toEqual([{ name: "--bg-image", value: 'url("data:image/svg+xml;base64,abc")' }]);
   });
 
   it("handles light-dark() values", () => {

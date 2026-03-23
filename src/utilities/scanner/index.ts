@@ -1,4 +1,4 @@
-import { parseCssCustomProperties } from "../cssParser/index.js";
+import { parseCssCustomProperties, deduplicateVariables } from "../cssParser/index.js";
 import type { ColorVariable } from "../cssParser/index.js";
 
 export type { ColorVariable };
@@ -34,20 +34,11 @@ function collectFromCssText(): ColorVariable[] {
     }
   }
 
-  // Parse <link rel="stylesheet"> CSS text via their associated CSSStyleSheet
-  for (const link of document.querySelectorAll<HTMLLinkElement>(
-    'link[rel="stylesheet"]',
-  )) {
+  // Extract custom properties directly from <link> stylesheet rules
+  for (const link of document.querySelectorAll<HTMLLinkElement>('link[rel="stylesheet"]')) {
     if (link.sheet) {
       try {
-        // Reconstruct CSS text from same-origin stylesheet rules
-        let cssText = "";
-        for (const rule of link.sheet.cssRules) {
-          cssText += rule.cssText + "\n";
-        }
-        if (cssText) {
-          results.push(...parseCssCustomProperties(cssText));
-        }
+        extractCustomPropsFromRules(link.sheet.cssRules, results);
       } catch {
         // Skip cross-origin stylesheets (cssRules access throws SecurityError)
       }
@@ -55,6 +46,26 @@ function collectFromCssText(): ColorVariable[] {
   }
 
   return results;
+}
+
+function extractCustomPropsFromRules(rules: CSSRuleList, out: ColorVariable[]): void {
+  for (const rule of rules) {
+    if (rule instanceof CSSStyleRule) {
+      for (let i = 0; i < rule.style.length; i++) {
+        const prop = rule.style[i];
+        if (prop.startsWith("--")) {
+          out.push({ name: prop, value: rule.style.getPropertyValue(prop).trim() });
+        }
+      }
+    }
+    if ("cssRules" in rule) {
+      try {
+        extractCustomPropsFromRules((rule as CSSGroupingRule).cssRules, out);
+      } catch {
+        // Skip inaccessible rules
+      }
+    }
+  }
 }
 
 // ── CSSOM walking + getComputedStyle ──────────────────────────────
@@ -177,19 +188,4 @@ function collectFromCssom(): ColorVariable[] {
   }
 
   return Object.entries(vars).map(([name, value]) => ({ name, value }));
-}
-
-// ── Deduplication ─────────────────────────────────────────────────
-
-function deduplicateVariables(vars: ColorVariable[]): ColorVariable[] {
-  const seen = new Set<string>();
-  const result: ColorVariable[] = [];
-  for (const v of vars) {
-    const key = `${v.name}\0${v.value}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      result.push(v);
-    }
-  }
-  return result;
 }
