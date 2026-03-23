@@ -368,6 +368,236 @@ describe("parseColor — color()", () => {
   it("returns null for unknown color space", () => {
     expect(parseColor("color(unknown 1 0 0)")).toBeNull();
   });
+
+  it("parses percentage channels in color()", () => {
+    const percent = parseColor("color(srgb 100% 0% 0%)")!;
+    const numeric = parseColor("color(srgb 1 0 0)")!;
+    expectOklabClose(percent, numeric);
+  });
+
+  it("parses 'none' keyword in color() channels", () => {
+    const color = parseColor("color(srgb none 0.5 0.5)")!;
+    expect(color).not.toBeNull();
+    // none = 0, so equivalent to color(srgb 0 0.5 0.5)
+    const equivalent = parseColor("color(srgb 0 0.5 0.5)")!;
+    expectOklabClose(color, equivalent);
+  });
+});
+
+// --- parseColor: color() — display-p3-linear ---
+
+describe("parseColor — color(display-p3-linear)", () => {
+  it("parses display-p3-linear red", () => {
+    const color = parseColor("color(display-p3-linear 1 0 0)")!;
+    expect(color).not.toBeNull();
+    expect(color.L).toBeGreaterThan(0);
+  });
+
+  it("display-p3-linear white matches srgb-linear white", () => {
+    const p3 = parseColor("color(display-p3-linear 1 1 1)")!;
+    const srgb = parseColor("color(srgb-linear 1 1 1)")!;
+    // Both should be white (same XYZ D65 white point)
+    expectOklabClose(p3, srgb);
+  });
+
+  it("display-p3-linear differs from gamma display-p3", () => {
+    const linear = parseColor("color(display-p3-linear 0.5 0 0)")!;
+    const gamma = parseColor("color(display-p3 0.5 0 0)")!;
+    // Same numeric values but different transfer functions yield different OKLab
+    expect(linear.L).not.toBeCloseTo(gamma.L, 2);
+  });
+});
+
+// --- parseColor: color() — a98-rgb ---
+
+describe("parseColor — color(a98-rgb)", () => {
+  it("parses a98-rgb red", () => {
+    const color = parseColor("color(a98-rgb 1 0 0)")!;
+    expect(color).not.toBeNull();
+    expect(color.L).toBeGreaterThan(0.4);
+  });
+
+  it("a98-rgb black is black", () => {
+    const color = parseColor("color(a98-rgb 0 0 0)")!;
+    expect(color.L).toBeCloseTo(0, 2);
+  });
+
+  it("a98-rgb white is white", () => {
+    const color = parseColor("color(a98-rgb 1 1 1)")!;
+    expect(color.L).toBeCloseTo(1, 2);
+  });
+
+  it("a98-rgb red differs from srgb red (wider gamut)", () => {
+    const a98 = parseColor("color(a98-rgb 1 0 0)")!;
+    const srgb = parseColor("color(srgb 1 0 0)")!;
+    expect(a98.L).not.toBeCloseTo(srgb.L, 3);
+  });
+
+  it("parses a98-rgb with alpha", () => {
+    const color = parseColor("color(a98-rgb 1 0 0 / 0.5)")!;
+    expect(color.alpha).toBeCloseTo(0.5, 3);
+  });
+});
+
+// --- parseColor: color() — prophoto-rgb ---
+
+describe("parseColor — color(prophoto-rgb)", () => {
+  it("parses prophoto-rgb red", () => {
+    const color = parseColor("color(prophoto-rgb 1 0 0)")!;
+    expect(color).not.toBeNull();
+    expect(color.L).toBeGreaterThan(0);
+  });
+
+  it("prophoto-rgb black is black", () => {
+    const color = parseColor("color(prophoto-rgb 0 0 0)")!;
+    expect(color.L).toBeCloseTo(0, 2);
+  });
+
+  it("prophoto-rgb white is white", () => {
+    const color = parseColor("color(prophoto-rgb 1 1 1)")!;
+    expect(color.L).toBeCloseTo(1, 1);
+  });
+
+  it("prophoto-rgb differs from srgb (different gamut and white point)", () => {
+    const prophoto = parseColor("color(prophoto-rgb 0.5 0.5 0)")!;
+    const srgb = parseColor("color(srgb 0.5 0.5 0)")!;
+    // Different primaries and D50 vs D65 white point
+    expect(prophoto.L).not.toBeCloseTo(srgb.L, 2);
+  });
+
+  it("prophoto-rgb handles low values (linear region of transfer)", () => {
+    // Values below 16/512 use linear transfer
+    const color = parseColor("color(prophoto-rgb 0.01 0.01 0.01)")!;
+    expect(color).not.toBeNull();
+    expect(color.L).toBeGreaterThan(0);
+  });
+});
+
+// --- parseColor: color() — rec2020 ---
+
+describe("parseColor — color(rec2020)", () => {
+  it("parses rec2020 red", () => {
+    const color = parseColor("color(rec2020 1 0 0)")!;
+    expect(color).not.toBeNull();
+    expect(color.L).toBeGreaterThan(0.4);
+  });
+
+  it("rec2020 black is black", () => {
+    const color = parseColor("color(rec2020 0 0 0)")!;
+    expect(color.L).toBeCloseTo(0, 2);
+  });
+
+  it("rec2020 white is white", () => {
+    const color = parseColor("color(rec2020 1 1 1)")!;
+    expect(color.L).toBeCloseTo(1, 1);
+  });
+
+  it("rec2020 red differs from srgb red (wider gamut)", () => {
+    const rec = parseColor("color(rec2020 1 0 0)")!;
+    const srgb = parseColor("color(srgb 1 0 0)")!;
+    expect(rec.L).not.toBeCloseTo(srgb.L, 3);
+  });
+
+  it("rec2020 handles low values (linear region of transfer)", () => {
+    // Values below beta * 4.5 use linear transfer
+    const color = parseColor("color(rec2020 0.01 0.01 0.01)")!;
+    expect(color).not.toBeNull();
+    expect(color.L).toBeGreaterThan(0);
+  });
+});
+
+// --- parseColor: color() — xyz / xyz-d65 / xyz-d50 ---
+
+describe("parseColor — color(xyz)", () => {
+  it("parses xyz (alias for xyz-d65)", () => {
+    const xyz = parseColor("color(xyz 0.5 0.5 0.5)")!;
+    const xyzD65 = parseColor("color(xyz-d65 0.5 0.5 0.5)")!;
+    expectOklabClose(xyz, xyzD65);
+  });
+
+  it("xyz-d65 black is black", () => {
+    const color = parseColor("color(xyz-d65 0 0 0)")!;
+    expect(color.L).toBeCloseTo(0, 2);
+  });
+
+  it("xyz-d50 produces different result from xyz-d65 for same values", () => {
+    const d50 = parseColor("color(xyz-d50 0.5 0.5 0.5)")!;
+    const d65 = parseColor("color(xyz-d65 0.5 0.5 0.5)")!;
+    // Different illuminants, so different OKLab
+    expect(d50.a).not.toBeCloseTo(d65.a, 2);
+  });
+
+  it("xyz-d65 white point produces achromatic color", () => {
+    // D65 white point: X=0.9505, Y=1.0, Z=1.089
+    const color = parseColor("color(xyz-d65 0.9505 1.0 1.089)")!;
+    expect(color.L).toBeCloseTo(1, 1);
+    expect(color.a).toBeCloseTo(0, 1);
+    expect(color.b).toBeCloseTo(0, 1);
+  });
+
+  it("xyz-d50 with alpha", () => {
+    const color = parseColor("color(xyz-d50 0.5 0.5 0.5 / 0.25)")!;
+    expect(color.alpha).toBeCloseTo(0.25, 3);
+  });
+});
+
+// --- parseColor: named colors ---
+
+describe("parseColor — named colors", () => {
+  it("parses 'red' keyword", () => {
+    const named = parseColor("red")!;
+    const hex = parseColor("#ff0000")!;
+    expectOklabClose(named, hex);
+  });
+
+  it("parses 'blue' keyword", () => {
+    const named = parseColor("blue")!;
+    const hex = parseColor("#0000ff")!;
+    expectOklabClose(named, hex);
+  });
+
+  it("parses 'rebeccapurple'", () => {
+    const named = parseColor("rebeccapurple")!;
+    const hex = parseColor("#663399")!;
+    expectOklabClose(named, hex);
+  });
+
+  it("parses 'transparent' as fully transparent black", () => {
+    const color = parseColor("transparent")!;
+    expect(color).not.toBeNull();
+    expect(color.L).toBe(0);
+    expect(color.a).toBe(0);
+    expect(color.b).toBe(0);
+    expect(color.alpha).toBe(0);
+  });
+
+  it("is case-insensitive", () => {
+    const lower = parseColor("cornflowerblue")!;
+    const upper = parseColor("CornflowerBlue")!;
+    expectOklabClose(lower, upper);
+  });
+
+  it("parses gray/grey variants", () => {
+    const gray = parseColor("darkgray")!;
+    const grey = parseColor("darkgrey")!;
+    expectOklabClose(gray, grey);
+  });
+
+  it("returns null for unknown keyword", () => {
+    expect(parseColor("notacolor")).toBeNull();
+  });
+
+  it("parses 'white' keyword", () => {
+    const named = parseColor("white")!;
+    const hex = parseColor("#ffffff")!;
+    expectOklabClose(named, hex);
+  });
+
+  it("parses 'black' keyword", () => {
+    const named = parseColor("black")!;
+    const hex = parseColor("#000000")!;
+    expectOklabClose(named, hex);
+  });
 });
 
 // --- parseColor: too few components (per-parser null paths) ---
@@ -457,13 +687,15 @@ describe("parseColor — edge cases / validOklab", () => {
 // --- Cross-format consistency ---
 
 describe("parseColor — cross-format consistency", () => {
-  it("red is consistent across hex, rgb, hsl, hwb, color(srgb)", () => {
+  it("red is consistent across hex, named, rgb, hsl, hwb, color(srgb)", () => {
     const hex = parseColor("#ff0000")!;
+    const named = parseColor("red")!;
     const rgb = parseColor("rgb(255, 0, 0)")!;
     const hsl = parseColor("hsl(0, 100%, 50%)")!;
     const hwb = parseColor("hwb(0 0% 0%)")!;
     const srgb = parseColor("color(srgb 1 0 0)")!;
 
+    expectOklabMatch(hex, named);
     expectOklabMatch(hex, rgb);
     expectOklabMatch(hex, hsl);
     expectOklabMatch(hex, hwb);
