@@ -45,12 +45,8 @@ describe("popup entry point", () => {
     chromeMock = createChromeMock();
     (globalThis as Record<string, unknown>).chrome = chromeMock;
 
-    // Stub window.close and matchMedia (jsdom doesn't implement them)
+    // Stub window.close (jsdom doesn't implement it)
     vi.stubGlobal("close", vi.fn());
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn(() => ({ matches: false, addEventListener: vi.fn() })),
-    );
 
     setupDOM();
     vi.resetModules();
