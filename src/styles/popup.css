@@ -2,20 +2,19 @@
   color-scheme: light dark;
 
   /* Default: Chrome neutral theme — overridden at runtime by applyTheme() */
-  --color-bg: light-dark(#f1f3f4, #292a2d);
+  --color-surface-container: light-dark(#f1f3f4, #292a2d);
   --color-surface: light-dark(#ffffff, #35363a);
-  --color-surface-active: light-dark(#e8eaed, #3c4043);
+  --color-surface-container-high: light-dark(#e8eaed, #3c4043);
   --color-primary: light-dark(#1a73e8, #8ab4f8);
+  --color-on-primary: light-dark(#ffffff, #000000);
   --color-primary-hover: light-dark(#1557b0, #669df6);
-  /* On-primary works universally: light primaries are dark, dark primaries are light pastels */
-  --color-primary-on: light-dark(#fff, #000);
   /* Functional colors — intentionally theme-independent */
   --color-success: light-dark(#1e8e3e, #2d6a4f);
   --color-success-hover: light-dark(#1a7f37, #245a42);
-  --color-text: light-dark(#202124, #e8eaed);
-  --color-text-muted: light-dark(#5f6368, #bdc1c6);
-  --color-text-dim: light-dark(#80868b, #9aa0a6);
-  --color-text-subtle: light-dark(#9aa0a6, #80868b);
+  --color-on-surface: light-dark(#202124, #e8eaed);
+  --color-on-surface-variant: light-dark(#5f6368, #bdc1c6);
+  --color-outline: light-dark(#80868b, #9aa0a6);
+  --color-outline-variant: light-dark(#9aa0a6, #80868b);
   --color-border: light-dark(#dadce0, #3c4043);
   --color-match-exact: light-dark(#1e8e3e, #81c995);
   --color-match-exact-bg: light-dark(#e6f4ea, #1b3a2d);
@@ -24,6 +23,7 @@
   --color-danger: light-dark(#c5221f, #f28b82);
   --radius-card: 12px;
   --radius-button: 100px;
+  --radius-field: 4px;
   --radius-swatch: 4px;
   --overlay-hover: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.08));
   --border-swatch: 1px solid light-dark(rgba(0, 0, 0, 0.15), rgba(255, 255, 255, 0.1));
@@ -49,7 +49,7 @@ body {
   font-family: system-ui, sans-serif;
   font-size: 13px;
   background: var(--color-surface);
-  color: var(--color-text);
+  color: var(--color-on-surface);
   padding: 16px;
 }
 
@@ -63,7 +63,7 @@ body {
 h1 {
   font-size: 14px;
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--color-on-surface);
 }
 
 #header-actions {
@@ -79,7 +79,7 @@ h1 {
   padding: 6px;
   background: none;
   border: none;
-  color: var(--color-text-subtle);
+  color: var(--color-outline-variant);
   cursor: pointer;
   border-radius: 50%;
   font-size: 16px;
@@ -88,7 +88,7 @@ h1 {
 
 #theme-btn:hover,
 #popout-btn:hover {
-  color: var(--color-text-muted);
+  color: var(--color-on-surface-variant);
   background: var(--overlay-hover);
 }
 
@@ -109,7 +109,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 8px;
   height: 36px;
   padding: 8px 16px;
   line-height: 20px;
@@ -146,7 +146,7 @@ h1 {
 /* Filled variant (Pick Color) */
 #pick-btn {
   background: var(--color-primary);
-  color: var(--color-primary-on);
+  color: var(--color-on-primary);
   border: none;
 }
 
@@ -159,19 +159,24 @@ h1 {
 #results {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 0;
   max-height: 400px;
   overflow-y: auto;
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  overflow-x: hidden;
+}
+
+#results:empty {
+  display: none;
 }
 
 .color-entry {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
+  gap: 12px;
+  padding: 8px 16px;
 }
 
 .color-swatch {
@@ -195,7 +200,7 @@ h1 {
 
 .color-value {
   font-size: 13px;
-  color: var(--color-text-muted);
+  color: var(--color-on-surface-variant);
   font-family: monospace;
 }
 
@@ -203,7 +208,7 @@ h1 {
 
 #save-controls {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   margin-bottom: 8px;
   align-items: center;
 }
@@ -213,9 +218,9 @@ h1 {
   height: 36px;
   padding: 8px 12px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-button);
-  background: var(--color-bg);
-  color: var(--color-text);
+  border-radius: var(--radius-field);
+  background: var(--color-surface-container);
+  color: var(--color-on-surface);
   font-size: 13px;
   outline: none;
 }
@@ -257,10 +262,10 @@ h1 {
   width: 100%;
   height: 36px;
   padding: 8px 16px;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   line-height: 20px;
   background: transparent;
-  color: var(--color-text-dim);
+  color: var(--color-outline);
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-button);
   font-size: 13px;
@@ -282,23 +287,33 @@ h1 {
 #saved-lists {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-bottom: 10px;
+  gap: 0;
+  margin-bottom: 12px;
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+#saved-lists:empty {
+  display: none;
 }
 
 .saved-list-entry {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
+  gap: 8px;
+  padding: 8px 16px;
   font-size: 13px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.saved-list-entry:last-child {
+  border-bottom: none;
 }
 
 .saved-list-entry.active {
-  background: var(--color-surface-active);
+  background: var(--color-surface-container-high);
 }
 
 .saved-list-name {
@@ -317,8 +332,8 @@ h1 {
   padding: 2px 6px;
   border: 1px solid var(--color-primary);
   border-radius: 4px;
-  background: var(--color-bg);
-  color: var(--color-text);
+  background: var(--color-surface-container);
+  color: var(--color-on-surface);
   font-size: 13px;
   font-weight: 500;
   font-family: system-ui, sans-serif;
@@ -326,7 +341,7 @@ h1 {
 }
 
 .saved-list-count {
-  color: var(--color-text-dim);
+  color: var(--color-outline);
   font-size: 12px;
   flex-shrink: 0;
 }
@@ -335,9 +350,12 @@ h1 {
 .saved-list-export {
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: 1px solid var(--color-primary);
-  border-radius: var(--radius-button);
+  border-radius: 50%;
   font-size: 14px;
   cursor: pointer;
   flex-shrink: 0;
@@ -354,9 +372,12 @@ h1 {
 .saved-list-delete {
   display: inline-flex;
   align-items: center;
-  padding: 4px 8px;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   border: 1px solid var(--color-danger);
-  border-radius: var(--radius-button);
+  border-radius: 50%;
   font-size: 14px;
   cursor: pointer;
   flex-shrink: 0;
@@ -377,7 +398,7 @@ h1 {
 
 #vars-summary {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--color-on-surface-variant);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   cursor: pointer;
@@ -386,12 +407,12 @@ h1 {
 }
 
 #vars-summary:hover {
-  color: var(--color-text);
+  color: var(--color-on-surface);
 }
 
 #vars-search-wrapper {
   position: relative;
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .vars-search-icon {
@@ -399,7 +420,7 @@ h1 {
   left: 10px;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--color-text-subtle);
+  color: var(--color-outline-variant);
   font-size: 14px;
   pointer-events: none;
 }
@@ -409,9 +430,9 @@ h1 {
   height: 36px;
   padding: 8px 12px 8px 30px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-button);
-  background: var(--color-bg);
-  color: var(--color-text);
+  border-radius: var(--radius-field);
+  background: var(--color-surface-container);
+  color: var(--color-on-surface);
   font-size: 13px;
   outline: none;
 }
@@ -427,20 +448,26 @@ h1 {
 #vars-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
   max-height: 300px;
   overflow-y: auto;
-  margin-top: 6px;
+  margin-top: 8px;
+  background: var(--color-surface-container);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  overflow-x: hidden;
 }
 
 .var-entry {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  background: var(--color-bg);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.var-entry:last-child {
+  border-bottom: none;
 }
 
 .var-swatch {
@@ -464,27 +491,28 @@ h1 {
 }
 
 .var-value {
-  font-size: 11px;
-  color: var(--color-text-dim);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-outline);
   font-family: monospace;
 }
 
 #no-vars-msg {
-  color: var(--color-text-subtle);
+  color: var(--color-outline-variant);
   font-size: 13px;
   text-align: center;
   padding: 8px 0;
 }
 
 #no-color-msg {
-  color: var(--color-text-subtle);
+  color: var(--color-outline-variant);
   font-size: 13px;
   text-align: center;
   padding: 12px 0;
 }
 
 .no-matches-msg {
-  color: var(--color-text-subtle);
+  color: var(--color-outline-variant);
   font-size: 13px;
   text-align: center;
   padding: 8px 0;
@@ -493,15 +521,14 @@ h1 {
 /* ── Match entries ───────────────────────────────────── */
 
 .picked-header {
-  background: var(--color-surface-active);
+  background: var(--color-surface-container-high);
 }
 
 .match-entry {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 5px 8px 5px 16px;
-  border-radius: var(--radius-card);
+  gap: 12px;
+  padding: 8px 16px;
 }
 
 .match-swatch {
@@ -525,8 +552,9 @@ h1 {
 }
 
 .match-value {
-  font-size: 11px;
-  color: var(--color-text-dim);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--color-outline);
   font-family: monospace;
 }
 
@@ -539,13 +567,10 @@ h1 {
 }
 
 /* Close match — normal */
-.match-close {
-  background: var(--color-bg);
-}
+.match-close {}
 
 /* Far match — greyed out */
 .match-far {
-  background: var(--color-bg);
   opacity: 0.45;
 }
 
@@ -555,7 +580,7 @@ h1 {
 }
 
 .ld-match {
-  color: var(--color-text);
+  color: var(--color-on-surface);
 }
 
 .ld-dim {
@@ -566,10 +591,11 @@ h1 {
 
 #theme-dropdown {
   margin-bottom: 12px;
-  padding: 12px;
-  background: var(--color-bg);
+  padding: 8px 12px;
+  background: var(--color-surface-container);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-card);
+  border-radius: var(--radius-field);
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3), 0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 #theme-dropdown.hidden {
@@ -595,7 +621,7 @@ h1 {
 }
 
 .theme-swatch:hover {
-  border-color: var(--color-text-subtle);
+  border-color: var(--color-outline-variant);
 }
 
 .theme-swatch.active {
@@ -637,5 +663,5 @@ h1 {
 .theme-swatch .check-mark svg {
   width: 10px;
   height: 10px;
-  color: var(--color-primary-on);
+  color: var(--color-on-primary);
 }
