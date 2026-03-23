@@ -24,11 +24,11 @@ export function renderColorVariables(
 
   const allEntries = Object.entries(vars).filter(([, value]) => isColorValue(value));
   if (allEntries.length === 0) {
-    varsSummaryEl.textContent = "Color Variables (0)";
+    varsSummaryEl.textContent = chrome.i18n.getMessage("colorVariablesCount", ["0"]);
     varsSearchEl.parentElement!.style.display = "none";
     const msg = document.createElement("p");
     msg.id = "no-vars-msg";
-    msg.textContent = "No color variables found on this page.";
+    msg.textContent = chrome.i18n.getMessage("noColorVariablesFound");
     varsListEl.appendChild(msg);
     return;
   }
@@ -43,8 +43,11 @@ export function renderColorVariables(
     : allEntries;
 
   varsSummaryEl.textContent = query
-    ? `Color Variables (${entries.length} / ${allEntries.length})`
-    : `Color Variables (${allEntries.length})`;
+    ? chrome.i18n.getMessage("colorVariablesFiltered", [
+        String(entries.length),
+        String(allEntries.length),
+      ])
+    : chrome.i18n.getMessage("colorVariablesCount", [String(allEntries.length)]);
 
   for (const [name, value] of entries) {
     const entry = document.createElement("div");
@@ -107,7 +110,7 @@ export function renderPickedColors(
     if (exact.length === 0 && close.length === 0 && far.length === 0) {
       const msg = document.createElement("p");
       msg.className = "no-matches-msg";
-      msg.textContent = "No variables to compare. Scan the page first.";
+      msg.textContent = chrome.i18n.getMessage("noVariablesToCompare");
       resultsEl.appendChild(msg);
       continue;
     }
@@ -161,7 +164,7 @@ export function renderSavedLists(
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
     deleteBtn.className = "saved-list-delete";
-    deleteBtn.ariaLabel = `Delete list "${name}"`;
+    deleteBtn.ariaLabel = chrome.i18n.getMessage("deleteList", [name]);
     deleteBtn.innerHTML =
       '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M7 21q-.825 0-1.412-.587T5 19V6H4V4h5V3h6v1h5v2h-1v13q0 .825-.587 1.413T17 21zM17 6H7v13h10zM9 17h2V8H9zm4 0h2V8h-2zM7 6v13z"/></svg>';
     deleteBtn.addEventListener("click", () => {

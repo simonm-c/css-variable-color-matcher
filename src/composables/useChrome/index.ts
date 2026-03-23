@@ -3,6 +3,7 @@ export interface ChromeStorageData {
   pickedColors?: string[];
   savedLists?: Record<string, Record<string, string>>;
   activeList?: string | null;
+  selectedTheme?: string;
 }
 
 type StorageKeys = keyof ChromeStorageData;

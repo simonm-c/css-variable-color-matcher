@@ -7,6 +7,11 @@ import {
   createMatchEntry,
 } from "../index.ts";
 import type { TieredMatches } from "../../../composables/useColorMatcher/index.ts";
+import { createChromeMock } from "../../../../test/chrome-mock.ts";
+
+beforeEach(() => {
+  (globalThis as Record<string, unknown>).chrome = createChromeMock();
+});
 
 function makeElements() {
   document.body.innerHTML = `

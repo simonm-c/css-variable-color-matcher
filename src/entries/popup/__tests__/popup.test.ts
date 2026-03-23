@@ -6,10 +6,16 @@ function setupDOM() {
   document.body.innerHTML = `
     <div id="header">
       <h1>CSS Variable Color Matcher</h1>
-      <button id="popout-btn"></button>
+      <div id="header-actions">
+        <button id="theme-btn"></button>
+        <button id="popout-btn"></button>
+      </div>
+    </div>
+    <div id="theme-dropdown" class="hidden">
+      <div id="theme-grid"></div>
     </div>
     <div id="controls">
-      <button id="scan-btn"><span id="scan-btn-text">Scan Page Variables</span></button>
+      <button id="scan-btn"><span id="scan-btn-text">Scan Variables</span></button>
       <button id="pick-btn">Pick Color</button>
     </div>
     <div id="save-controls">
@@ -39,8 +45,12 @@ describe("popup entry point", () => {
     chromeMock = createChromeMock();
     (globalThis as Record<string, unknown>).chrome = chromeMock;
 
-    // Stub window.close (jsdom doesn't implement it)
+    // Stub window.close and matchMedia (jsdom doesn't implement them)
     vi.stubGlobal("close", vi.fn());
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn(() => ({ matches: false, addEventListener: vi.fn() })),
+    );
 
     setupDOM();
     vi.resetModules();

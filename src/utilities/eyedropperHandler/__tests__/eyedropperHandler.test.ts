@@ -13,6 +13,12 @@ describe("eyedropperHandler — eyedropper message listener", () => {
     chromeMock = createChromeMock();
     (globalThis as Record<string, unknown>).chrome = chromeMock;
 
+    // Stub matchMedia (jsdom doesn't implement it)
+    (globalThis as Record<string, unknown>).matchMedia = vi.fn(() => ({
+      matches: false,
+      addEventListener: vi.fn(),
+    }));
+
     // Mock EyeDropper
     (globalThis as Record<string, unknown>).EyeDropper = class {
       open() {
