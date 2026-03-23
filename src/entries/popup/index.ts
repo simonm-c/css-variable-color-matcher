@@ -51,14 +51,6 @@ for (const el of document.querySelectorAll<HTMLInputElement>("[data-i18n-placeho
   if (msg) el.placeholder = msg;
 }
 
-// Sync toolbar icon with system dark/light theme
-function syncIconTheme(isDark: boolean): void {
-  sendRuntimeMessage({ action: "update-icon", isDark });
-}
-const darkMq = matchMedia("(prefers-color-scheme: dark)");
-syncIconTheme(darkMq.matches);
-darkMq.addEventListener("change", (e) => syncIconTheme(e.matches));
-
 let currentVars: Record<string, string> = {};
 
 function displayVars(vars: Record<string, string>): void {

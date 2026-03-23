@@ -5,14 +5,6 @@ declare class EyeDropper {
   open(options?: { signal?: AbortSignal }): Promise<{ sRGBHex: string }>;
 }
 
-// Sync toolbar icon with system dark/light theme on every page load
-const darkMq = matchMedia("(prefers-color-scheme: dark)");
-function syncIconTheme(isDark: boolean): void {
-  chrome.runtime.sendMessage({ action: "update-icon", isDark });
-}
-syncIconTheme(darkMq.matches);
-darkMq.addEventListener("change", (e) => syncIconTheme(e.matches));
-
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   const msg = message as { action?: string; append?: boolean };
   if (msg.action === "start-eyedropper") {
