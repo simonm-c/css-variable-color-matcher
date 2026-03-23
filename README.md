@@ -59,21 +59,36 @@ Built for developers and designers working with design systems, Tailwind CSS, or
 
 ## Supported Color Formats
 
-The color parser recognizes all modern CSS color formats:
+The color parser supports all CSS Color Level 4 syntaxes:
 
 | Format | Example |
 |--------|---------|
 | Hex | `#fff`, `#ff0000`, `#ff000080` |
+| Named colors | `red`, `rebeccapurple`, `transparent` (all 148 keywords) |
 | RGB/RGBA | `rgb(255 0 0)`, `rgba(255, 0, 0, 0.5)` |
 | HSL/HSLA | `hsl(0 100% 50%)`, `hsla(0, 100%, 50%, 0.5)` |
 | HWB | `hwb(0 0% 0%)` |
 | OKLab | `oklab(0.5 0.1 -0.1)` |
-| OKLch | `oklch(0.5 0.1 0)` |
-| LAB | `lab(50 20 -30)` |
-| LCH | `lch(50 20 0)` |
-| Display-P3 | `color(display-p3 1 0 0)` |
-| sRGB | `color(srgb 1 0 0)` |
+| OKLCH | `oklch(0.5 0.2 180)` |
+| CIE Lab | `lab(50 20 -30)` |
+| CIE LCH | `lch(50 20 0)` |
 | `light-dark()` | `light-dark(#fff, #000)` |
+
+All `color()` predefined color spaces are supported:
+
+| Color space | Example |
+|-------------|---------|
+| `srgb` | `color(srgb 1 0 0)` |
+| `srgb-linear` | `color(srgb-linear 1 0 0)` |
+| `display-p3` | `color(display-p3 1 0 0)` |
+| `display-p3-linear` | `color(display-p3-linear 1 0 0)` |
+| `a98-rgb` | `color(a98-rgb 1 0 0)` |
+| `prophoto-rgb` | `color(prophoto-rgb 1 0 0)` |
+| `rec2020` | `color(rec2020 1 0 0)` |
+| `xyz` / `xyz-d65` | `color(xyz-d65 0.95 1.0 1.09)` |
+| `xyz-d50` | `color(xyz-d50 0.95 1.0 0.82)` |
+
+All color functions support the `none` keyword for missing components (e.g. `oklch(0.5 none 180)`) and `/alpha` slash syntax (e.g. `rgb(255 0 0 / 0.5)`).
 
 ## Development
 
@@ -101,7 +116,7 @@ src/
 │   ├── useChrome/          # Chrome extension API wrapper (storage, tabs, scripting, messaging)
 │   └── useColorMatcher/    # Color matching and tiered comparison logic
 ├── utilities/
-│   ├── colorParsing/       # Color parsing and OKLab distance comparison
+│   ├── colorParsing/       # CSS Color 4 parser, color space conversions, OKLab distance
 │   ├── scanner/            # Self-contained frame scanner (injected into pages)
 │   ├── popupRenderer/      # DOM rendering functions for popup UI
 │   ├── themes/             # Chrome theme presets (M3-derived palettes, applyTheme)
@@ -122,10 +137,11 @@ dist/                       # Compiled JS output (gitignored)
 
 Colors are compared in the [OKLab color space](https://bottosson.github.io/posts/oklab/), which is perceptually uniform — equal numeric distances correspond to equal perceived differences. The pipeline:
 
-1. Parse the input color format into linear sRGB
-2. Convert linear sRGB → XYZ (D65) → LMS cone response
-3. Apply cube root → OKLab (L, a, b)
-4. Compute Euclidean distance between two OKLab values, scaled to 0-255
+1. Parse the CSS color string (any supported format) into its color space components
+2. Apply the appropriate transfer function to linearize (e.g. sRGB gamma, Adobe RGB gamma 563/256, ProPhoto gamma 1.8, BT.2020 piecewise)
+3. Matrix-multiply linear RGB → XYZ D65 (with Bradford chromatic adaptation for D50-based spaces like ProPhoto and CIE Lab)
+4. Convert XYZ D65 → LMS cone response (M1 matrix) → cube root → OKLab (M2 matrix)
+5. Compute Euclidean distance between two OKLab values, scaled to 0-255
 
 A distance of 0 is an exact color match. Distances <= 2 are treated as exact matches (imperceptible difference). Results are sorted by distance so the closest matches appear first.
 

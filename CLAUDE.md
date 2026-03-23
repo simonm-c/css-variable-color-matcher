@@ -28,7 +28,7 @@ Variables are stored and passed as `ColorVariable[]` — arrays allow duplicate 
 ### Utilities (stateless helpers)
 - `src/utilities/cssParser/index.ts` — **Shared CSS text parser**. Exports `ColorVariable` interface and `parseCssCustomProperties(cssText)` — extracts `--*` declarations from CSS text. Used by both the scanner and the CSS import feature
 - `src/utilities/cssImportExport/index.ts` — Export saved lists as `.css` files (`exportListAsCss`), import `.css` files into saved lists (`triggerCssFileImport`). Uses shared CSS parser
-- `src/utilities/colorParsing/index.ts` — Color parsing and OKLab distance comparison (`parseColor`, `parseLightDark`, `colorDistanceOklab`)
+- `src/utilities/colorParsing/index.ts` — Color parsing and OKLab distance comparison. Exports `parseColor` (all CSS Color 4 syntaxes), `parseLightDark`, `colorDistanceOklab`. Internal structure: transfer functions → conversion matrices → color space converters → sub-parsers → `parseColor` dispatcher
 - `src/utilities/scanner/index.ts` — `scanFrameColorVariables()` — combines CSS text parsing (shared parser) with CSSOM walking + `getComputedStyle` resolution. Imports from `cssParser`. Returns `ColorVariable[]`
 - `src/utilities/scanner/inject.ts` — Thin entry point for file-based injection (calls `scanFrameColorVariables()`)
 - `src/utilities/popupRenderer/index.ts` — DOM rendering functions for popup UI (receives data + callbacks, no Chrome API calls)
@@ -83,6 +83,35 @@ The scanner collects all CSS custom properties (`--*`) via two complementary app
 - Returns resolved values (var() references expanded)
 
 Color values are filtered at display time using `parseColor()`/`parseLightDark()`.
+
+## Color parsing
+
+`parseColor()` converts any CSS color string to OKLab for perceptual comparison. It supports all CSS Color Level 4 syntaxes:
+
+- **Hex**: `#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`
+- **Named colors**: all 147 CSS keywords + `transparent`
+- **Functions**: `rgb()`/`rgba()`, `hsl()`/`hsla()`, `hwb()`, `oklab()`, `oklch()`, `lab()`, `lch()`
+- **`color()` with all predefined spaces**: `srgb`, `srgb-linear`, `display-p3`, `display-p3-linear`, `a98-rgb`, `prophoto-rgb`, `rec2020`, `xyz`/`xyz-d65`, `xyz-d50`
+- **`light-dark()`** via separate `parseLightDark()` (returns light/dark strings, not OKLab)
+
+All functions support the `none` keyword (= 0) for any channel and `/alpha` slash syntax.
+
+**Not supported** (context-dependent, cannot resolve to absolute color): `currentcolor`, system colors, `color-mix()`, relative color syntax (`from`).
+
+### Conversion pipeline
+
+All color spaces convert to OKLab through XYZ D65 as the interchange space:
+1. **Transfer function**: gamma-encoded → linear (sRGB piecewise, a98-rgb power 563/256, ProPhoto gamma 1.8, BT.2020 piecewise)
+2. **Matrix multiply**: linear RGB → XYZ D65 (or XYZ D50 → D65 via Bradford adaptation for ProPhoto/Lab)
+3. **OKLab pipeline**: XYZ D65 → LMS (M1 matrix) → cube root → OKLab (M2 matrix)
+
+### Adding a new color space
+
+1. Add transfer function (if not linear or already supported)
+2. Add 3×3 conversion matrix to XYZ (D65 or D50)
+3. Add converter function (`spaceToOklab`) that linearizes then matrix-multiplies
+4. Register in `colorSpaceConverters` map
+5. Add tests for black, white, red, and cross-space comparison
 
 ### Known target site structure (Tailwind v4 / Vite)
 
