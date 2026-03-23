@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { useColorMatcher, EXACT_DISTANCE_THRESHOLD, CLOSE_MATCHES_COUNT } from "../index.ts";
+import type { ColorVariable } from "../../../utilities/cssParser/index.ts";
 
 const { findMatches, isColorValue } = useColorMatcher();
 
@@ -25,40 +26,40 @@ describe("isColorValue", () => {
 
 describe("findMatches", () => {
   it("returns empty tiers for invalid picked color", () => {
-    const result = findMatches("not-a-color", { "--a": "#ff0000" });
+    const result = findMatches("not-a-color", [{ name: "--a", value: "#ff0000" }]);
     expect(result.exact).toHaveLength(0);
     expect(result.close).toHaveLength(0);
     expect(result.far).toHaveLength(0);
   });
 
   it("returns empty tiers for empty vars", () => {
-    const result = findMatches("#ff0000", {});
+    const result = findMatches("#ff0000", []);
     expect(result.exact).toHaveLength(0);
     expect(result.close).toHaveLength(0);
     expect(result.far).toHaveLength(0);
   });
 
   it("finds exact match for identical color", () => {
-    const result = findMatches("#ff0000", { "--color-red": "#ff0000" });
+    const result = findMatches("#ff0000", [{ name: "--color-red", value: "#ff0000" }]);
     expect(result.exact).toHaveLength(1);
     expect(result.exact[0].name).toBe("--color-red");
     expect(Math.round(result.exact[0].distance)).toBeLessThanOrEqual(EXACT_DISTANCE_THRESHOLD);
   });
 
   it("sorts matches by distance (closest first)", () => {
-    const result = findMatches("#ff0000", {
-      "--far": "#0000ff",
-      "--close": "#fe0101",
-      "--exact": "#ff0000",
-    });
+    const result = findMatches("#ff0000", [
+      { name: "--far", value: "#0000ff" },
+      { name: "--close", value: "#fe0101" },
+      { name: "--exact", value: "#ff0000" },
+    ]);
     const allMatches = [...result.exact, ...result.close, ...result.far];
     expect(allMatches[0].name).toBe("--exact");
   });
 
   it("handles light-dark() variables", () => {
-    const result = findMatches("#ff0000", {
-      "--ld": "light-dark(#ff0000, #0000ff)",
-    });
+    const result = findMatches("#ff0000", [
+      { name: "--ld", value: "light-dark(#ff0000, #0000ff)" },
+    ]);
     const allMatches = [...result.exact, ...result.close, ...result.far];
     expect(allMatches).toHaveLength(1);
     expect(allMatches[0].lightDark).toBeDefined();
@@ -67,23 +68,32 @@ describe("findMatches", () => {
   });
 
   it("skips non-color variables", () => {
-    const result = findMatches("#ff0000", {
-      "--spacing": "16px",
-      "--color-red": "#ff0000",
-    });
+    const result = findMatches("#ff0000", [
+      { name: "--spacing", value: "16px" },
+      { name: "--color-red", value: "#ff0000" },
+    ]);
     const allMatches = [...result.exact, ...result.close, ...result.far];
     expect(allMatches).toHaveLength(1);
     expect(allMatches[0].name).toBe("--color-red");
   });
 
   it("limits close and far tiers", () => {
-    const vars: Record<string, string> = {};
+    const vars: ColorVariable[] = [];
     for (let i = 0; i < 20; i++) {
       const hex = (i * 10).toString(16).padStart(2, "0");
-      vars[`--c${i}`] = `#${hex}${hex}${hex}`;
+      vars.push({ name: `--c${i}`, value: `#${hex}${hex}${hex}` });
     }
     const result = findMatches("#000000", vars);
     expect(result.close.length).toBeLessThanOrEqual(CLOSE_MATCHES_COUNT);
     expect(result.far.length).toBeLessThanOrEqual(CLOSE_MATCHES_COUNT);
+  });
+
+  it("handles duplicate variable names with different values", () => {
+    const result = findMatches("#ff0000", [
+      { name: "--color", value: "#ff0000" },
+      { name: "--color", value: "#0000ff" },
+    ]);
+    const allMatches = [...result.exact, ...result.close, ...result.far];
+    expect(allMatches).toHaveLength(2);
   });
 });

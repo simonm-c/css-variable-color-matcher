@@ -23,6 +23,7 @@ function setupDOM() {
       <button id="save-btn">Save</button>
     </div>
     <div id="saved-lists"></div>
+    <button id="import-btn">Import</button>
     <details id="variables">
       <summary id="vars-summary">Color Variables</summary>
       <div id="vars-search-wrapper">
@@ -73,11 +74,11 @@ describe("popup entry point", () => {
       const changeListener = chromeMock.storage.onChanged.addListener.mock.calls[0][0];
       changeListener({
         colorVariables: {
-          newValue: {
-            "--color-brand": "#ff0000",
-            "--spacing": "16px",
-            "--color-bg": "#000000",
-          },
+          newValue: [
+            { name: "--color-brand", value: "#ff0000" },
+            { name: "--spacing", value: "16px" },
+            { name: "--color-bg", value: "#000000" },
+          ],
         },
       });
 
@@ -93,11 +94,11 @@ describe("popup entry point", () => {
       const changeListener = chromeMock.storage.onChanged.addListener.mock.calls[0][0];
       changeListener({
         colorVariables: {
-          newValue: {
-            "--color-brand": "#ff0000",
-            "--color-bg": "#000000",
-            "--color-accent": "#00ff00",
-          },
+          newValue: [
+            { name: "--color-brand", value: "#ff0000" },
+            { name: "--color-bg", value: "#000000" },
+            { name: "--color-accent", value: "#00ff00" },
+          ],
         },
       });
 
@@ -139,7 +140,7 @@ describe("popup entry point", () => {
 
     it("renders exact matches with .match-exact class", async () => {
       chromeMock._setStorage({
-        colorVariables: { "--color-red": "#ff0000" },
+        colorVariables: [{ name: "--color-red", value: "#ff0000" }],
       });
 
       const changeListener = chromeMock.storage.onChanged.addListener.mock.calls[0][0];
@@ -156,11 +157,11 @@ describe("popup entry point", () => {
 
     it("sorts matches by distance (closest first)", async () => {
       chromeMock._setStorage({
-        colorVariables: {
-          "--far": "#0000ff",
-          "--close": "#fe0101",
-          "--exact": "#ff0000",
-        },
+        colorVariables: [
+          { name: "--far", value: "#0000ff" },
+          { name: "--close", value: "#fe0101" },
+          { name: "--exact", value: "#ff0000" },
+        ],
       });
 
       const changeListener = chromeMock.storage.onChanged.addListener.mock.calls[0][0];
@@ -180,7 +181,9 @@ describe("popup entry point", () => {
   describe("getActiveTab (tested via scan button)", () => {
     it("queries active tab on scan click", async () => {
       chromeMock.tabs.query.mockResolvedValueOnce([{ id: 1, url: "https://example.com" }]);
-      chromeMock.scripting.executeScript.mockResolvedValueOnce([{ result: {} }]);
+      chromeMock.scripting.executeScript
+        .mockResolvedValueOnce([{ result: undefined }])
+        .mockResolvedValueOnce([{ result: [] }]);
 
       const scanBtn = document.getElementById("scan-btn") as HTMLButtonElement;
       scanBtn.click();
@@ -196,7 +199,9 @@ describe("popup entry point", () => {
       chromeMock.tabs.query
         .mockResolvedValueOnce([{ id: 1, url: "chrome-extension://abc/popup.html" }])
         .mockResolvedValueOnce([{ id: 2, url: "https://example.com" }]);
-      chromeMock.scripting.executeScript.mockResolvedValueOnce([{ result: {} }]);
+      chromeMock.scripting.executeScript
+        .mockResolvedValueOnce([{ result: undefined }])
+        .mockResolvedValueOnce([{ result: [] }]);
 
       const scanBtn = document.getElementById("scan-btn") as HTMLButtonElement;
       scanBtn.click();
@@ -210,6 +215,32 @@ describe("popup entry point", () => {
     });
   });
 
+  describe("scan button", () => {
+    it("uses two-step injection: files then func", async () => {
+      chromeMock.tabs.query.mockResolvedValueOnce([{ id: 1, url: "https://example.com" }]);
+      // Step 1: files injection (no meaningful result)
+      chromeMock.scripting.executeScript.mockResolvedValueOnce([{ result: undefined }]);
+      // Step 2: func retrieval
+      chromeMock.scripting.executeScript.mockResolvedValueOnce([
+        { result: [{ name: "--color", value: "#ff0000" }] },
+      ]);
+
+      const scanBtn = document.getElementById("scan-btn") as HTMLButtonElement;
+      scanBtn.click();
+
+      await vi.waitFor(() =>
+        expect(chromeMock.scripting.executeScript).toHaveBeenCalledTimes(2),
+      );
+      // First call: files mode
+      expect(chromeMock.scripting.executeScript).toHaveBeenCalledWith({
+        target: { tabId: 1, allFrames: true },
+        files: ["dist/utilities/scanner/inject.js"],
+      });
+      // Second call: func mode to retrieve result
+      expect(chromeMock.scripting.executeScript.mock.calls[1][0]).toHaveProperty("func");
+    });
+  });
+
   describe("pick button", () => {
     it("sends start-eyedropper message to active tab", async () => {
       chromeMock.tabs.query.mockResolvedValueOnce([{ id: 42, url: "https://example.com" }]);
@@ -220,7 +251,6 @@ describe("popup entry point", () => {
       await vi.waitFor(() => expect(chromeMock.tabs.sendMessage).toHaveBeenCalled());
       expect(chromeMock.tabs.sendMessage).toHaveBeenCalledWith(42, {
         action: "start-eyedropper",
-        append: false,
       });
     });
 
@@ -253,7 +283,7 @@ describe("popup entry point", () => {
   describe("save button", () => {
     it("saves current variables as a named list", () => {
       chromeMock._setStorage({
-        colorVariables: { "--brand": "#ff0000" },
+        colorVariables: [{ name: "--brand", value: "#ff0000" }],
         savedLists: {},
       });
 
@@ -277,6 +307,13 @@ describe("popup entry point", () => {
 
       // No new storage.get calls beyond initialization
       expect(chromeMock.storage.local.get.mock.calls.length).toBe(callsBefore);
+    });
+  });
+
+  describe("import button", () => {
+    it("exists in the DOM", () => {
+      const importBtn = document.getElementById("import-btn");
+      expect(importBtn).not.toBeNull();
     });
   });
 });

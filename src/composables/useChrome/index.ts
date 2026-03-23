@@ -1,7 +1,11 @@
+import type { ColorVariable } from "../../utilities/cssParser/index.js";
+
+export type { ColorVariable };
+
 export interface ChromeStorageData {
-  colorVariables?: Record<string, string>;
+  colorVariables?: ColorVariable[];
   pickedColors?: string[];
-  savedLists?: Record<string, Record<string, string>>;
+  savedLists?: Record<string, ColorVariable[]>;
   activeList?: string | null;
   selectedTheme?: string;
 }
@@ -47,6 +51,16 @@ function executeScriptInFrames(
   return chrome.scripting.executeScript({
     target: { tabId, allFrames: true },
     func,
+  });
+}
+
+function executeFileInFrames(
+  tabId: number,
+  file: string,
+): Promise<chrome.scripting.InjectionResult[]> {
+  return chrome.scripting.executeScript({
+    target: { tabId, allFrames: true },
+    files: [file],
   });
 }
 
@@ -103,6 +117,7 @@ export function useChrome() {
     onStorageChanged,
     getActiveTab,
     executeScriptInFrames,
+    executeFileInFrames,
     injectContentScript,
     sendTabMessage,
     sendRuntimeMessage,

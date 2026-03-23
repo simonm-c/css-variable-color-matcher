@@ -7,6 +7,7 @@ import {
   createMatchEntry,
 } from "../index.ts";
 import type { TieredMatches } from "../../../composables/useColorMatcher/index.ts";
+import type { ColorVariable } from "../../../utilities/cssParser/index.ts";
 import { createChromeMock } from "../../../../test/chrome-mock.ts";
 
 beforeEach(() => {
@@ -35,7 +36,7 @@ const isColor = (v: string) => /^#[0-9a-f]{3,8}$/i.test(v);
 describe("renderColorVariables", () => {
   it("shows (0) and message for empty vars", () => {
     const els = makeElements();
-    renderColorVariables({}, els, isColor);
+    renderColorVariables([], els, isColor);
     expect(els.varsSummaryEl.textContent).toBe("Color Variables (0)");
     expect(els.varsListEl.querySelector("#no-vars-msg")).not.toBeNull();
   });
@@ -43,7 +44,11 @@ describe("renderColorVariables", () => {
   it("renders only color values", () => {
     const els = makeElements();
     renderColorVariables(
-      { "--color-brand": "#ff0000", "--spacing": "16px", "--color-bg": "#000" },
+      [
+        { name: "--color-brand", value: "#ff0000" },
+        { name: "--spacing", value: "16px" },
+        { name: "--color-bg", value: "#000" },
+      ],
       els,
       isColor,
     );
@@ -55,7 +60,11 @@ describe("renderColorVariables", () => {
     const els = makeElements();
     els.varsSearchEl.value = "brand";
     renderColorVariables(
-      { "--color-brand": "#ff0000", "--color-bg": "#000", "--color-accent": "#0f0" },
+      [
+        { name: "--color-brand", value: "#ff0000" },
+        { name: "--color-bg", value: "#000" },
+        { name: "--color-accent", value: "#0f0" },
+      ],
       els,
       isColor,
     );
@@ -68,7 +77,7 @@ describe("renderPickedColors", () => {
   it("shows no-matches message when findMatches returns empty", () => {
     const els = makeElements();
     const emptyMatches: TieredMatches = { exact: [], close: [], far: [] };
-    renderPickedColors(["#ff0000"], {}, els.resultsEl, () => emptyMatches);
+    renderPickedColors(["#ff0000"], [], els.resultsEl, () => emptyMatches);
     expect(els.resultsEl.querySelector(".picked-header")).not.toBeNull();
     expect(els.resultsEl.querySelector(".no-matches-msg")!.textContent).toBe(
       "No variables to compare. Scan the page first.",
@@ -82,7 +91,12 @@ describe("renderPickedColors", () => {
       close: [{ name: "--close", value: "#fe0101", distance: 3 }],
       far: [{ name: "--far", value: "#0000ff", distance: 100 }],
     };
-    renderPickedColors(["#ff0000"], { "--red": "#ff0000" }, els.resultsEl, () => tiered);
+    renderPickedColors(
+      ["#ff0000"],
+      [{ name: "--red", value: "#ff0000" }],
+      els.resultsEl,
+      () => tiered,
+    );
     expect(els.resultsEl.querySelectorAll(".match-exact").length).toBe(1);
     expect(els.resultsEl.querySelectorAll(".match-close").length).toBe(1);
     expect(els.resultsEl.querySelectorAll(".match-far").length).toBe(1);
@@ -92,30 +106,28 @@ describe("renderPickedColors", () => {
 describe("renderSavedLists", () => {
   it("renders nothing for empty lists", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn() };
+    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
     renderSavedLists({}, null, els.savedListsEl, cbs, isColor);
     expect(els.savedListsEl.children.length).toBe(0);
   });
 
   it("renders list entries with color count", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn() };
-    renderSavedLists(
-      { "My List": { "--brand": "#ff0000", "--spacing": "16px" } },
-      null,
-      els.savedListsEl,
-      cbs,
-      isColor,
-    );
+    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    const vars: ColorVariable[] = [
+      { name: "--brand", value: "#ff0000" },
+      { name: "--spacing", value: "16px" },
+    ];
+    renderSavedLists({ "My List": vars }, null, els.savedListsEl, cbs, isColor);
     expect(els.savedListsEl.querySelectorAll(".saved-list-entry").length).toBe(1);
     expect(els.savedListsEl.querySelector(".saved-list-count")!.textContent).toBe("(1)");
   });
 
   it("marks active list", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn() };
+    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
     renderSavedLists(
-      { "My List": { "--brand": "#ff0000" } },
+      { "My List": [{ name: "--brand", value: "#ff0000" }] },
       "My List",
       els.savedListsEl,
       cbs,
@@ -128,8 +140,8 @@ describe("renderSavedLists", () => {
 
   it("calls onToggleList callback on entry click", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn() };
-    const vars = { "--brand": "#ff0000" };
+    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    const vars: ColorVariable[] = [{ name: "--brand", value: "#ff0000" }];
     renderSavedLists({ "My List": vars }, null, els.savedListsEl, cbs, isColor);
     const entry = els.savedListsEl.querySelector(".saved-list-entry") as HTMLElement;
     entry.click();
@@ -138,11 +150,42 @@ describe("renderSavedLists", () => {
 
   it("calls onDeleteList callback on delete click", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn() };
-    renderSavedLists({ "My List": { "--brand": "#ff0000" } }, null, els.savedListsEl, cbs, isColor);
+    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    renderSavedLists(
+      { "My List": [{ name: "--brand", value: "#ff0000" }] },
+      null,
+      els.savedListsEl,
+      cbs,
+      isColor,
+    );
     const deleteBtn = els.savedListsEl.querySelector(".saved-list-delete") as HTMLElement;
     deleteBtn.click();
     expect(cbs.onDeleteList).toHaveBeenCalledWith("My List", false);
+  });
+
+  it("renders export button for each list", () => {
+    const els = makeElements();
+    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    renderSavedLists(
+      { "My List": [{ name: "--brand", value: "#ff0000" }] },
+      null,
+      els.savedListsEl,
+      cbs,
+      isColor,
+    );
+    const exportBtn = els.savedListsEl.querySelector(".saved-list-export") as HTMLElement;
+    expect(exportBtn).not.toBeNull();
+  });
+
+  it("calls onExportList callback on export click", () => {
+    const els = makeElements();
+    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    const vars: ColorVariable[] = [{ name: "--brand", value: "#ff0000" }];
+    renderSavedLists({ "My List": vars }, null, els.savedListsEl, cbs, isColor);
+    const exportBtn = els.savedListsEl.querySelector(".saved-list-export") as HTMLElement;
+    exportBtn.click();
+    expect(cbs.onExportList).toHaveBeenCalledWith("My List", vars);
+    expect(cbs.onToggleList).not.toHaveBeenCalled();
   });
 });
 

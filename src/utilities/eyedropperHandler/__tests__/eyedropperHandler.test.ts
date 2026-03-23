@@ -34,32 +34,19 @@ describe("eyedropperHandler — eyedropper message listener", () => {
 
   it("returns true for start-eyedropper to keep channel open", () => {
     const sendResponse = vi.fn();
-    const result = messageListener({ action: "start-eyedropper", append: false }, {}, sendResponse);
+    const result = messageListener({ action: "start-eyedropper" }, {}, sendResponse);
     expect(result).toBe(true);
   });
 
-  it("sets pickedColors to [hex] in replace mode", async () => {
+  it("sets pickedColors to [hex]", async () => {
     const sendResponse = vi.fn();
-    messageListener({ action: "start-eyedropper", append: false }, {}, sendResponse);
+    messageListener({ action: "start-eyedropper" }, {}, sendResponse);
 
     // Wait for async resolution
     await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
 
     expect(sendResponse).toHaveBeenCalledWith({ color: "#abcdef" });
     expect(chromeMock.storage.local.set).toHaveBeenCalledWith({ pickedColors: ["#abcdef"] });
-  });
-
-  it("appends hex in append mode", async () => {
-    chromeMock._setStorage({ pickedColors: ["#111111"] });
-    const sendResponse = vi.fn();
-    messageListener({ action: "start-eyedropper", append: true }, {}, sendResponse);
-
-    await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
-
-    expect(sendResponse).toHaveBeenCalledWith({ color: "#abcdef" });
-    expect(chromeMock.storage.local.set).toHaveBeenCalledWith({
-      pickedColors: ["#111111", "#abcdef"],
-    });
   });
 
   it("sends null color when EyeDropper rejects", async () => {
@@ -74,7 +61,7 @@ describe("eyedropperHandler — eyedropper message listener", () => {
     const listener = chromeMock.runtime.onMessage.addListener.mock.calls[1][0];
 
     const sendResponse = vi.fn();
-    listener({ action: "start-eyedropper", append: false }, {}, sendResponse);
+    listener({ action: "start-eyedropper" }, {}, sendResponse);
 
     await vi.waitFor(() => expect(sendResponse).toHaveBeenCalled());
     expect(sendResponse).toHaveBeenCalledWith({ color: null });
