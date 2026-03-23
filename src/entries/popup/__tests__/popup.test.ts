@@ -228,9 +228,7 @@ describe("popup entry point", () => {
       const scanBtn = document.getElementById("scan-btn") as HTMLButtonElement;
       scanBtn.click();
 
-      await vi.waitFor(() =>
-        expect(chromeMock.scripting.executeScript).toHaveBeenCalledTimes(2),
-      );
+      await vi.waitFor(() => expect(chromeMock.scripting.executeScript).toHaveBeenCalledTimes(2));
       // First call: files mode
       expect(chromeMock.scripting.executeScript).toHaveBeenCalledWith({
         target: { tabId: 1, allFrames: true },

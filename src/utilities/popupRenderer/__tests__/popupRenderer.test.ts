@@ -106,14 +106,24 @@ describe("renderPickedColors", () => {
 describe("renderSavedLists", () => {
   it("renders nothing for empty lists", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    const cbs = {
+      onToggleList: vi.fn(),
+      onDeleteList: vi.fn(),
+      onExportList: vi.fn(),
+      onRenameList: vi.fn(),
+    };
     renderSavedLists({}, null, els.savedListsEl, cbs, isColor);
     expect(els.savedListsEl.children.length).toBe(0);
   });
 
   it("renders list entries with color count", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    const cbs = {
+      onToggleList: vi.fn(),
+      onDeleteList: vi.fn(),
+      onExportList: vi.fn(),
+      onRenameList: vi.fn(),
+    };
     const vars: ColorVariable[] = [
       { name: "--brand", value: "#ff0000" },
       { name: "--spacing", value: "16px" },
@@ -125,7 +135,12 @@ describe("renderSavedLists", () => {
 
   it("marks active list", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    const cbs = {
+      onToggleList: vi.fn(),
+      onDeleteList: vi.fn(),
+      onExportList: vi.fn(),
+      onRenameList: vi.fn(),
+    };
     renderSavedLists(
       { "My List": [{ name: "--brand", value: "#ff0000" }] },
       "My List",
@@ -140,7 +155,12 @@ describe("renderSavedLists", () => {
 
   it("calls onToggleList callback on entry click", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    const cbs = {
+      onToggleList: vi.fn(),
+      onDeleteList: vi.fn(),
+      onExportList: vi.fn(),
+      onRenameList: vi.fn(),
+    };
     const vars: ColorVariable[] = [{ name: "--brand", value: "#ff0000" }];
     renderSavedLists({ "My List": vars }, null, els.savedListsEl, cbs, isColor);
     const entry = els.savedListsEl.querySelector(".saved-list-entry") as HTMLElement;
@@ -150,7 +170,12 @@ describe("renderSavedLists", () => {
 
   it("calls onDeleteList callback on delete click", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    const cbs = {
+      onToggleList: vi.fn(),
+      onDeleteList: vi.fn(),
+      onExportList: vi.fn(),
+      onRenameList: vi.fn(),
+    };
     renderSavedLists(
       { "My List": [{ name: "--brand", value: "#ff0000" }] },
       null,
@@ -165,7 +190,12 @@ describe("renderSavedLists", () => {
 
   it("renders export button for each list", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    const cbs = {
+      onToggleList: vi.fn(),
+      onDeleteList: vi.fn(),
+      onExportList: vi.fn(),
+      onRenameList: vi.fn(),
+    };
     renderSavedLists(
       { "My List": [{ name: "--brand", value: "#ff0000" }] },
       null,
@@ -179,7 +209,12 @@ describe("renderSavedLists", () => {
 
   it("calls onExportList callback on export click", () => {
     const els = makeElements();
-    const cbs = { onToggleList: vi.fn(), onDeleteList: vi.fn(), onExportList: vi.fn(), onRenameList: vi.fn() };
+    const cbs = {
+      onToggleList: vi.fn(),
+      onDeleteList: vi.fn(),
+      onExportList: vi.fn(),
+      onRenameList: vi.fn(),
+    };
     const vars: ColorVariable[] = [{ name: "--brand", value: "#ff0000" }];
     renderSavedLists({ "My List": vars }, null, els.savedListsEl, cbs, isColor);
     const exportBtn = els.savedListsEl.querySelector(".saved-list-export") as HTMLElement;

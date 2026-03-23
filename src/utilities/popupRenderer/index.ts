@@ -40,8 +40,7 @@ export function renderColorVariables(
   const query = varsSearchEl.value.toLowerCase();
   const entries = query
     ? allEntries.filter(
-        (v) =>
-          v.name.toLowerCase().includes(query) || v.value.toLowerCase().includes(query),
+        (v) => v.name.toLowerCase().includes(query) || v.value.toLowerCase().includes(query),
       )
     : allEntries;
 

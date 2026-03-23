@@ -14,11 +14,10 @@ const {
   setStorage,
   onStorageChanged,
   getActiveTab,
-  executeScriptInFrames,
-  executeFileInFrames,
   injectContentScript,
   sendTabMessage,
   sendRuntimeMessage,
+  scanTabColorVariables,
 } = useChrome();
 const { findMatches, isColorValue } = useColorMatcher();
 
@@ -59,7 +58,7 @@ let currentVars: ColorVariable[] = [];
 // Migrate old Record<string, string> format to ColorVariable[]
 function normalizeVars(raw: unknown): ColorVariable[] {
   if (Array.isArray(raw)) return raw;
-  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+  if (raw && typeof raw === "object") {
     // Old format: { "--name": "value" }
     return Object.entries(raw as Record<string, string>).map(([name, value]) => ({
       name,
@@ -69,9 +68,7 @@ function normalizeVars(raw: unknown): ColorVariable[] {
   return [];
 }
 
-function normalizeSavedLists(
-  raw: unknown,
-): Record<string, ColorVariable[]> {
+function normalizeSavedLists(raw: unknown): Record<string, ColorVariable[]> {
   if (!raw || typeof raw !== "object") return {};
   const result: Record<string, ColorVariable[]> = {};
   for (const [name, vars] of Object.entries(raw as Record<string, unknown>)) {
@@ -244,27 +241,7 @@ scanBtn.addEventListener("click", async () => {
   scanBtnText.textContent = chrome.i18n.getMessage("scanning");
 
   try {
-    // Step 1: inject bundled scanner (stores result on globalThis)
-    await executeFileInFrames(tab.id, "dist/utilities/scanner/inject.js");
-    // Step 2: retrieve results via func mode (reliably captures return values)
-    const results = await executeScriptInFrames(tab.id, () => {
-      return (globalThis as Record<string, unknown>).__cssVarScanResult;
-    });
-
-    const merged: ColorVariable[] = [];
-    const seen = new Set<string>();
-    for (const result of results) {
-      if (result.result && Array.isArray(result.result)) {
-        for (const v of result.result as ColorVariable[]) {
-          const key = `${v.name}\0${v.value}`;
-          if (!seen.has(key)) {
-            seen.add(key);
-            merged.push(v);
-          }
-        }
-      }
-    }
-
+    const merged = await scanTabColorVariables(tab.id);
     await setStorage({ colorVariables: merged });
     displayVars(merged);
   } finally {
