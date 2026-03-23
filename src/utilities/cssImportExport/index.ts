@@ -10,7 +10,7 @@ export function exportListAsCss(listName: string, vars: ColorVariable[]): void {
 
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${listName}.css`;
+  a.download = `${listName.replace(/[^a-zA-Z0-9 _-]/g, "_")}.css`;
   a.click();
 
   URL.revokeObjectURL(url);

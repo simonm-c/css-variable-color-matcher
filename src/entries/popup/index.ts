@@ -56,8 +56,12 @@ for (const el of document.querySelectorAll<HTMLInputElement>("[data-i18n-placeho
 let currentVars: ColorVariable[] = [];
 
 // Migrate old Record<string, string> format to ColorVariable[]
+function isColorVariable(v: unknown): v is ColorVariable {
+  return typeof v === "object" && v !== null && typeof (v as ColorVariable).name === "string" && typeof (v as ColorVariable).value === "string";
+}
+
 function normalizeVars(raw: unknown): ColorVariable[] {
-  if (Array.isArray(raw)) return raw;
+  if (Array.isArray(raw)) return raw.filter(isColorVariable);
   if (raw && typeof raw === "object") {
     // Old format: { "--name": "value" }
     return Object.entries(raw as Record<string, string>).map(([name, value]) => ({
@@ -121,12 +125,15 @@ function displaySavedLists(
         exportListAsCss(name, vars);
       },
       onRenameList(oldName, newName) {
-        if (newName in lists) return; // Don't overwrite existing list
-        lists[newName] = lists[oldName];
-        delete lists[oldName];
-        const newActive = activeList === oldName ? newName : activeList;
-        setStorage({ savedLists: lists, activeList: newActive }).then(() => {
-          displaySavedLists(lists, newActive);
+        getStorage(["savedLists", "activeList"]).then((data) => {
+          const freshLists = normalizeSavedLists(data.savedLists);
+          if (!(oldName in freshLists) || newName in freshLists) return;
+          freshLists[newName] = freshLists[oldName];
+          delete freshLists[oldName];
+          const newActive = data.activeList === oldName ? newName : data.activeList ?? null;
+          setStorage({ savedLists: freshLists, activeList: newActive }).then(() => {
+            displaySavedLists(freshLists, newActive);
+          });
         });
       },
     },

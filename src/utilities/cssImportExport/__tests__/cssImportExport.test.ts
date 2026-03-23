@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { exportListAsCss, triggerCssFileImport } from "../index.ts";
 
 beforeEach(() => {
   document.body.innerHTML = "";
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
 });
 
 describe("exportListAsCss", () => {
@@ -31,6 +35,36 @@ describe("exportListAsCss", () => {
 
     expect(clickSpy).toHaveBeenCalled();
     expect(revokeUrl).toHaveBeenCalledWith("blob:mock-url");
+  });
+
+  it("sanitizes special characters in the download filename", () => {
+    let capturedDownload = "";
+    const createElementOrig = document.createElement.bind(document);
+    vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+      const el = createElementOrig(tag);
+      if (tag === "a") {
+        el.click = vi.fn();
+        Object.defineProperty(el, "download", {
+          set(v: string) {
+            capturedDownload = v;
+          },
+          get() {
+            return capturedDownload;
+          },
+        });
+      }
+      return el;
+    });
+
+    vi.stubGlobal("URL", {
+      createObjectURL: vi.fn(() => "blob:mock-url"),
+      revokeObjectURL: vi.fn(),
+    });
+
+    exportListAsCss("../../../etc/passwd", [{ name: "--a", value: "red" }]);
+    expect(capturedDownload).not.toContain("/");
+    expect(capturedDownload).not.toContain("..");
+    expect(capturedDownload).toMatch(/\.css$/);
   });
 });
 
