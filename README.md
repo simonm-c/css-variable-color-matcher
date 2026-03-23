@@ -1,65 +1,94 @@
-# CSS Variable Color Matcher
+<p align="center">
+  <img src="icons/icon.svg" alt="CSS Variable Color Matcher" width="128" height="128">
+</p>
 
-A Chrome extension that scans all CSS custom properties from any webpage, filters to color values, and lets you match picked colors against them using perceptually accurate OKLab color distance.
+<h1 align="center">CSS Variable Color Matcher</h1>
+
+<p align="center">
+  Match colors to CSS custom properties on any webpage.
+</p>
+
+<p align="center">
+  <a href="https://github.com/simonm-c/css-variable-color-matcher/blob/main/package.json"><img src="https://img.shields.io/badge/version-1.0.0-blue" alt="Version"></a>
+  <a href="#license"><img src="https://img.shields.io/badge/license-ISC-green" alt="License"></a>
+  <img src="https://img.shields.io/badge/manifest-v3-orange" alt="Manifest V3">
+  <img src="https://img.shields.io/badge/chrome-extension-yellow?logo=googlechrome&logoColor=white" alt="Chrome Extension">
+</p>
+
+---
+
+Scan any webpage for CSS custom properties, pick a color with the built-in eyedropper, and instantly find the closest matching variable. Supports all CSS Color Level 4 syntaxes including `oklch()`, `lab()`, `color()`, `light-dark()`, and more. Save variable lists for quick comparison across pages.
 
 Built for developers and designers working with design systems, Tailwind CSS, or any site that uses CSS custom properties for color tokens.
 
+<!-- ## Screenshots
+
+> TODO: Add screenshots of the extension in action
+
+-->
+
 ## Features
 
-- **Scan all CSS custom properties** from stylesheets, adopted stylesheets, and inline styles
+- **Scan all CSS custom properties** — collects from stylesheets, adopted stylesheets, and inline styles across all frames
 - **Deep rule traversal** — recurses into `@layer`, `@media`, `@supports`, and nested CSS rules (Tailwind v4 compatible)
 - **Pick colors** from the page using the native EyeDropper API
-- **Perceptual color matching** using OKLab distance with exact / close / far match tiers
+- **Perceptual color matching** — uses OKLab distance with exact / close / far match tiers
+- **Full CSS Color 4 support** — hex, named colors, `rgb()`, `hsl()`, `hwb()`, `oklab()`, `oklch()`, `lab()`, `lch()`, `color()` with all predefined spaces
 - **`light-dark()` support** — compares picked color against both branches independently
 - **Real-time search** to filter variables by name or value
-- **Save named lists** of variables and switch between them to compare across pages
-- **Pop-out window** for easier side-by-side use
+- **Save & manage named lists** — save, rename, delete, and switch between variable snapshots
+- **Import/export CSS files** — import `.css` files as lists, export saved lists as `.css`
+- **Pop-out window** for side-by-side use alongside DevTools
 - **Multi-frame scanning** — scans all iframes on the page
-- **Chrome-matching theme** with Material Design UI and automatic dark mode support
-- **Internationalization** — UI strings externalized via Chrome i18n (`_locales/`)
+- **14 theme presets** — Chrome-matching Material Design UI with automatic light/dark mode
+- **Internationalization** — UI strings externalized via Chrome i18n
 
 ## Installation
 
-1. Clone the repository:
+### From source (developer mode)
+
+1. Clone and build:
    ```sh
    git clone https://github.com/simonm-c/css-variable-color-matcher.git
    cd css-variable-color-matcher
-   ```
-
-2. Install dependencies and build:
-   ```sh
    pnpm install
    pnpm run build
    ```
 
-3. Load the extension in Chrome:
+2. Load in Chrome:
    - Navigate to `chrome://extensions`
    - Enable **Developer mode** (top right)
-   - Click **Load unpacked**
-   - Select the project directory
+   - Click **Load unpacked** and select the project directory
 
 ## Usage
 
-1. **Scan** — Open the extension popup and click **Scan Variables**. The extension injects a scanner into all frames on the page, collecting every CSS custom property and resolving `var()` references via `getComputedStyle`. Only color values are displayed.
+1. **Scan** — Click the extension icon and press **Scan Variables**. The scanner collects every CSS custom property from all frames, resolving `var()` references via `getComputedStyle`. Only color values are displayed.
 
-2. **Pick a color** — Click **Pick Color** to open the native eyedropper. Click any pixel on the page to select it.
+2. **Pick a color** — Click **Pick Color** to activate the native eyedropper. Click any pixel on the page.
 
-3. **Review matches** — Picked colors are compared against all scanned variables. Results are sorted by perceptual distance and grouped into three tiers:
-   - **Exact** (distance <= 2) — highlighted in green
-   - **Close** (~5 nearest) — normal styling
-   - **Far** (~5 more) — dimmed
+3. **Review matches** — Results are sorted by perceptual distance (OKLab) and grouped into tiers:
+   | Tier | Distance | Display |
+   |------|----------|---------|
+   | Exact | ≤ 2 | Highlighted green |
+   | Close | ~5 nearest | Normal |
+   | Far | ~5 more | Dimmed |
 
-4. **Search** — Use the search field to filter variables by name or resolved value.
+4. **Search** — Filter variables by name or resolved value.
 
-5. **Save lists** — Enter a name and click **Save** to store the current set of variables. Switch between saved lists to compare variables across different pages or states.
+5. **Save lists** — Save the current variable set with a name. Switch between lists to compare across pages or states.
 
-6. **Pop out** — Click the pop-out button in the header to open the UI in a standalone window.
+6. **Import/Export** — Import a `.css` file as a named list, or export a saved list as `.css`.
 
-7. **Theme** — Click the palette icon in the header to choose from 14 theme presets matching Chrome's "Customize Chrome" color options (Default, Blue, Cool Grey, Grey, Aqua, Green, Viridian, Citron, Orange, Apricot, Rose, Pink, Fuchsia, Violet). The UI automatically follows your system light/dark preference via `light-dark()`.
+7. **Pop out** — Open the UI in a standalone window via the pop-out button.
+
+8. **Themes** — Choose from 14 presets (Default, Blue, Cool Grey, Grey, Aqua, Green, Viridian, Citron, Orange, Apricot, Rose, Pink, Fuchsia, Violet). Follows system light/dark preference automatically.
 
 ## Supported Color Formats
 
-The color parser supports all CSS Color Level 4 syntaxes:
+All CSS Color Level 4 syntaxes are supported. Every function accepts the `none` keyword for missing components and `/alpha` slash syntax.
+
+<details>
+<summary><strong>Color functions</strong></summary>
 
 | Format | Example |
 |--------|---------|
@@ -74,7 +103,10 @@ The color parser supports all CSS Color Level 4 syntaxes:
 | CIE LCH | `lch(50 20 0)` |
 | `light-dark()` | `light-dark(#fff, #000)` |
 
-All `color()` predefined color spaces are supported:
+</details>
+
+<details>
+<summary><strong><code>color()</code> predefined spaces</strong></summary>
 
 | Color space | Example |
 |-------------|---------|
@@ -88,63 +120,97 @@ All `color()` predefined color spaces are supported:
 | `xyz` / `xyz-d65` | `color(xyz-d65 0.95 1.0 1.09)` |
 | `xyz-d50` | `color(xyz-d50 0.95 1.0 0.82)` |
 
-All color functions support the `none` keyword for missing components (e.g. `oklch(0.5 none 180)`) and `/alpha` slash syntax (e.g. `rgb(255 0 0 / 0.5)`).
+</details>
+
+## Permissions
+
+This extension requests the following Chrome permissions:
+
+| Permission | Why it's needed |
+|------------|-----------------|
+| `activeTab` | Access the current tab to scan its CSS custom properties |
+| `scripting` | Inject the scanner script into page frames |
+| `storage` | Persist saved variable lists and theme preference |
+| `host_permissions` (`<all_urls>`) | Scan CSS variables on any website and fetch cross-origin stylesheets |
+
+The extension does not collect, transmit, or store any personal data. All data remains local to your browser.
+
+## How Color Matching Works
+
+Colors are compared in the [OKLab color space](https://bottosson.github.io/posts/oklab/), which is perceptually uniform — equal numeric distances correspond to equal perceived differences.
+
+**Conversion pipeline:**
+
+1. Parse the CSS color string into its color space components
+2. Linearize via the appropriate transfer function (sRGB piecewise, Adobe RGB γ 563/256, ProPhoto γ 1.8, BT.2020 piecewise)
+3. Matrix-multiply linear RGB → XYZ D65 (with Bradford chromatic adaptation for D50-based spaces)
+4. Convert XYZ D65 → LMS (M1) → cube root → OKLab (M2)
+5. Compute Euclidean distance, scaled to 0–255
+
+A distance of 0 is an exact match. Distances ≤ 2 are treated as exact (imperceptible difference).
 
 ## Development
 
 ```sh
-pnpm run build            # Compile TypeScript → dist/
-pnpm run watch            # Watch mode compilation
-pnpm run fmt              # Format with oxfmt
-pnpm run fmt:check        # Check formatting
-pnpm run lint             # Lint with oxlint
-pnpm run lint:fix         # Auto-fix lint issues
-pnpm run test             # Run unit tests (Vitest)
-pnpm run test:watch       # Run tests in watch mode
-pnpm run test:coverage    # Run tests with coverage
-pnpm run test:integration # Build + run Puppeteer integration tests
-pnpm run test:all         # Run unit + integration tests
+pnpm install                  # Install dependencies
+pnpm run build                # Compile TypeScript → dist/
+pnpm run watch                # Watch mode
+pnpm run typecheck            # Type check (tsc --noEmit)
+pnpm run fmt                  # Format (oxfmt)
+pnpm run lint                 # Lint (oxlint)
+pnpm run test                 # Unit tests (Vitest)
+pnpm run test:watch           # Tests in watch mode
+pnpm run test:coverage        # Tests with coverage
+pnpm run test:integration     # Build + Puppeteer integration tests
+pnpm run test:all             # Unit + integration tests
 ```
 
-Source files are TypeScript in `src/`. Never edit the compiled `dist/*.js` files directly.
+### Tech stack
 
-## Project Structure
+- **TypeScript** — source language
+- **esbuild** — bundler (4 entry points: popup ESM, scanner ESM, eyedropper IIFE, panel manager IIFE)
+- **Vitest** — unit tests
+- **Puppeteer** — integration tests
+- **oxfmt** / **oxlint** — formatting and linting
+
+### Project structure
 
 ```
 src/
 ├── composables/
-│   ├── useChrome/          # Chrome extension API wrapper (storage, tabs, scripting, messaging)
-│   └── useColorMatcher/    # Color matching and tiered comparison logic
+│   ├── useChrome/            # Chrome API wrapper (storage, tabs, scripting, messaging)
+│   └── useColorMatcher/      # Color matching and tiered comparison logic
 ├── utilities/
-│   ├── colorParsing/       # CSS Color 4 parser, color space conversions, OKLab distance
-│   ├── scanner/            # Self-contained frame scanner (injected into pages)
-│   ├── popupRenderer/      # DOM rendering functions for popup UI
-│   ├── themes/             # Chrome theme presets (M3-derived palettes, applyTheme)
-│   ├── eyedropperHandler/  # Content script: EyeDropper API integration
-│   └── panelWindowManager/ # Service worker: panel window lifecycle
+│   ├── colorParsing/         # CSS Color 4 parser, color space conversions, OKLab distance
+│   ├── cssParser/            # Shared CSS text parser (used by scanner and import)
+│   ├── cssImportExport/      # Import/export .css files as variable lists
+│   ├── scanner/              # Frame scanner (injected into pages)
+│   ├── popupRenderer/        # DOM rendering functions for popup UI
+│   ├── themes/               # Chrome theme presets (14 M3-derived palettes)
+│   ├── eyedropperHandler/    # Content script: EyeDropper API
+│   └── panelWindowManager/   # Service worker: panel window lifecycle
 ├── entries/
-│   └── popup/              # Popup entry point: wires composables and utilities
+│   └── popup/                # Popup entry point
 └── styles/
-    └── popup.css           # Popup styles (Chrome-matching theme, dark mode)
-
-_locales/en/messages.json   # i18n strings
-popup.html                  # Popup markup
-manifest.json               # Chrome extension manifest (V3)
-dist/                       # Compiled JS output (gitignored)
+    └── popup.css             # Popup styles (Material Design, light-dark())
 ```
 
-## How Color Matching Works
+## Compatibility
 
-Colors are compared in the [OKLab color space](https://bottosson.github.io/posts/oklab/), which is perceptually uniform — equal numeric distances correspond to equal perceived differences. The pipeline:
+- **Chrome** 95+ (EyeDropper API support)
+- **Manifest V3**
+- Not compatible with Firefox (uses Chrome-specific APIs: `chrome.scripting`, EyeDropper)
 
-1. Parse the CSS color string (any supported format) into its color space components
-2. Apply the appropriate transfer function to linearize (e.g. sRGB gamma, Adobe RGB gamma 563/256, ProPhoto gamma 1.8, BT.2020 piecewise)
-3. Matrix-multiply linear RGB → XYZ D65 (with Bradford chromatic adaptation for D50-based spaces like ProPhoto and CIE Lab)
-4. Convert XYZ D65 → LMS cone response (M1 matrix) → cube root → OKLab (M2 matrix)
-5. Compute Euclidean distance between two OKLab values, scaled to 0-255
+## Contributing
 
-A distance of 0 is an exact color match. Distances <= 2 are treated as exact matches (imperceptible difference). Results are sorted by distance so the closest matches appear first.
+Contributions are welcome! Please open an [issue](https://github.com/simonm-c/css-variable-color-matcher/issues) or submit a pull request.
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Make your changes and add tests
+4. Run `pnpm run test:all && pnpm run lint && pnpm run typecheck` to verify
+5. Submit a pull request
 
 ## License
 
-ISC
+[ISC](https://opensource.org/licenses/ISC)
