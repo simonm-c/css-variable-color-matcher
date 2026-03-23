@@ -9,7 +9,6 @@ Built for developers and designers working with design systems, Tailwind CSS, or
 - **Scan all CSS custom properties** from stylesheets, adopted stylesheets, and inline styles
 - **Deep rule traversal** — recurses into `@layer`, `@media`, `@supports`, and nested CSS rules (Tailwind v4 compatible)
 - **Pick colors** from the page using the native EyeDropper API
-  - Single-pick replaces previous color; **Shift+click** appends to compare multiple colors
 - **Perceptual color matching** using OKLab distance with exact / close / far match tiers
 - **`light-dark()` support** — compares picked color against both branches independently
 - **Real-time search** to filter variables by name or value
@@ -41,9 +40,9 @@ Built for developers and designers working with design systems, Tailwind CSS, or
 
 ## Usage
 
-1. **Scan** — Open the extension popup and click **Scan Page Variables**. The extension injects a scanner into all frames on the page, collecting every CSS custom property and resolving `var()` references via `getComputedStyle`. Only color values are displayed.
+1. **Scan** — Open the extension popup and click **Scan Variables**. The extension injects a scanner into all frames on the page, collecting every CSS custom property and resolving `var()` references via `getComputedStyle`. Only color values are displayed.
 
-2. **Pick a color** — Click **Pick Color** to open the native eyedropper. Click any pixel on the page to select it. Hold **Shift** when clicking the button to append additional colors instead of replacing.
+2. **Pick a color** — Click **Pick Color** to open the native eyedropper. Click any pixel on the page to select it.
 
 3. **Review matches** — Picked colors are compared against all scanned variables. Results are sorted by perceptual distance and grouped into three tiers:
    - **Exact** (distance <= 2) — highlighted in green
@@ -55,6 +54,8 @@ Built for developers and designers working with design systems, Tailwind CSS, or
 5. **Save lists** — Enter a name and click **Save** to store the current set of variables. Switch between saved lists to compare variables across different pages or states.
 
 6. **Pop out** — Click the pop-out button in the header to open the UI in a standalone window.
+
+7. **Theme** — Click the palette icon in the header to choose from 14 theme presets matching Chrome's "Customize Chrome" color options (Default, Blue, Cool Grey, Grey, Aqua, Green, Viridian, Citron, Orange, Apricot, Rose, Pink, Fuchsia, Violet). The UI automatically follows your system light/dark preference via `light-dark()`.
 
 ## Supported Color Formats
 
@@ -103,6 +104,7 @@ src/
 │   ├── colorParsing/       # Color parsing and OKLab distance comparison
 │   ├── scanner/            # Self-contained frame scanner (injected into pages)
 │   ├── popupRenderer/      # DOM rendering functions for popup UI
+│   ├── themes/             # Chrome theme presets (M3-derived palettes, applyTheme)
 │   ├── eyedropperHandler/  # Content script: EyeDropper API integration
 │   └── panelWindowManager/ # Service worker: panel window lifecycle
 ├── entries/
@@ -110,6 +112,7 @@ src/
 └── styles/
     └── popup.css           # Popup styles (Chrome-matching theme, dark mode)
 
+_locales/en/messages.json   # i18n strings
 popup.html                  # Popup markup
 manifest.json               # Chrome extension manifest (V3)
 dist/                       # Compiled JS output (gitignored)

@@ -1,10 +1,66 @@
-// Self-contained scanning function injected into each frame via executeScript.
-// Cannot reference external functions — must be fully standalone.
-export function scanFrameColorVariables(): Record<string, string> {
-  const vars: Record<string, string> = {};
-  if (!document.documentElement) return vars;
+import { parseCssCustomProperties } from "../cssParser/index.js";
+import type { ColorVariable } from "../cssParser/index.js";
 
-  // Collect custom property names and their declaring selectors from stylesheets
+export type { ColorVariable };
+
+/**
+ * Scan the current frame for CSS custom properties using two complementary approaches:
+ * 1. CSS text parsing — reads <style> textContent and <link> stylesheet text,
+ *    parsed via the shared parseCssCustomProperties() utility
+ * 2. CSSOM walking + getComputedStyle — resolves var() references and picks up
+ *    adopted stylesheets and inline styles
+ *
+ * Results are merged and deduplicated: same name + same value = one entry,
+ * same name + different values = multiple entries.
+ */
+export function scanFrameColorVariables(): ColorVariable[] {
+  if (!document.documentElement) return [];
+
+  const textParsed = collectFromCssText();
+  const cssomResolved = collectFromCssom();
+
+  return deduplicateVariables([...textParsed, ...cssomResolved]);
+}
+
+// ── CSS text parsing (shared with import) ─────────────────────────
+
+function collectFromCssText(): ColorVariable[] {
+  const results: ColorVariable[] = [];
+
+  // Parse <style> elements
+  for (const style of document.querySelectorAll("style")) {
+    if (style.textContent) {
+      results.push(...parseCssCustomProperties(style.textContent));
+    }
+  }
+
+  // Parse <link rel="stylesheet"> CSS text via their associated CSSStyleSheet
+  for (const link of document.querySelectorAll<HTMLLinkElement>(
+    'link[rel="stylesheet"]',
+  )) {
+    if (link.sheet) {
+      try {
+        // Reconstruct CSS text from same-origin stylesheet rules
+        let cssText = "";
+        for (const rule of link.sheet.cssRules) {
+          cssText += rule.cssText + "\n";
+        }
+        if (cssText) {
+          results.push(...parseCssCustomProperties(cssText));
+        }
+      } catch {
+        // Skip cross-origin stylesheets (cssRules access throws SecurityError)
+      }
+    }
+  }
+
+  return results;
+}
+
+// ── CSSOM walking + getComputedStyle ──────────────────────────────
+
+function collectFromCssom(): ColorVariable[] {
+  const vars: Record<string, string> = {};
   const propSelectors = new Map<string, Set<string>>();
 
   function collectFromRules(rules: CSSRuleList, parentSelector?: string): void {
@@ -21,7 +77,6 @@ export function scanFrameColorVariables(): Record<string, string> {
             selectors.add(rule.selectorText);
           }
         }
-        // Recurse into CSS-nested rules, passing selector for CSSNestedDeclarations
         if ("cssRules" in rule) {
           try {
             collectFromRules(rule.cssRules, rule.selectorText);
@@ -30,7 +85,7 @@ export function scanFrameColorVariables(): Record<string, string> {
           }
         }
       } else {
-        // CSSNestedDeclarations — declarations split by nested rules inherit parent selector
+        // CSSNestedDeclarations — inherit parent selector
         if ("style" in rule && parentSelector) {
           const style = (rule as unknown as CSSStyleRule).style;
           for (let i = 0; i < style.length; i++) {
@@ -45,7 +100,6 @@ export function scanFrameColorVariables(): Record<string, string> {
             }
           }
         }
-        // Recurse into grouping rules (@layer, @media, @supports, etc.)
         if ("cssRules" in rule) {
           try {
             collectFromRules((rule as CSSGroupingRule).cssRules, parentSelector);
@@ -64,7 +118,6 @@ export function scanFrameColorVariables(): Record<string, string> {
       // Skip cross-origin stylesheets
     }
   }
-  // Scan adopted/constructed stylesheets (used by web components, CSS-in-JS, etc.)
   if (document.adoptedStyleSheets) {
     for (const sheet of document.adoptedStyleSheets) {
       try {
@@ -91,20 +144,16 @@ export function scanFrameColorVariables(): Record<string, string> {
         // Invalid selector
       }
     }
-    // Fallback: resolve against documentElement
     if (!vars[prop]) {
       const value = getComputedStyle(document.documentElement).getPropertyValue(prop).trim();
       if (value) vars[prop] = value;
     }
   }
 
-  // Walk all elements once for two purposes:
-  // 1. Find computed values for stylesheet properties that selectors couldn't resolve
-  // 2. Pick up inline-style custom properties (JS-injected variables)
+  // Walk all elements for unresolved stylesheet properties and inline custom properties
   const unresolved = new Set([...propSelectors.keys()].filter((p) => !vars[p]));
 
   for (const el of document.querySelectorAll("*")) {
-    // Check computed style for unresolved stylesheet properties
     if (unresolved.size > 0) {
       const computed = getComputedStyle(el);
       for (const prop of unresolved) {
@@ -116,7 +165,6 @@ export function scanFrameColorVariables(): Record<string, string> {
       }
     }
 
-    // Check inline styles for JS-injected custom properties
     const style = (el as HTMLElement).style;
     if (!style) continue;
     for (let i = 0; i < style.length; i++) {
@@ -128,5 +176,20 @@ export function scanFrameColorVariables(): Record<string, string> {
     }
   }
 
-  return vars;
+  return Object.entries(vars).map(([name, value]) => ({ name, value }));
+}
+
+// ── Deduplication ─────────────────────────────────────────────────
+
+function deduplicateVariables(vars: ColorVariable[]): ColorVariable[] {
+  const seen = new Set<string>();
+  const result: ColorVariable[] = [];
+  for (const v of vars) {
+    const key = `${v.name}\0${v.value}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(v);
+    }
+  }
+  return result;
 }

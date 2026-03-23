@@ -4,8 +4,9 @@
   "description": "",
   "main": "content.js",
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch",
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "watch": "node build.mjs --watch",
     "fmt": "oxfmt --write src/**/*.ts",
     "fmt:check": "oxfmt --check src/**/*.ts",
     "lint": "oxlint src/**/*.ts",
@@ -17,7 +18,10 @@
     "test:all": "pnpm run test && pnpm run test:integration"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["puppeteer"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "puppeteer"
+    ]
   },
   "repository": {
     "type": "git",
@@ -34,6 +38,7 @@
     "@vitest/coverage-istanbul": "^4.1.0",
     "@vitest/coverage-v8": "^4.1.0",
     "chrome-types": "^0.1.425",
+    "esbuild": "^0.27.4",
     "jsdom": "^29.0.1",
     "oxfmt": "^0.41.0",
     "oxlint": "^1.56.0",

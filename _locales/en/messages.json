@@ -96,5 +96,33 @@
         "example": "My Color Palette"
       }
     }
+  },
+  "renameList": {
+    "message": "Rename list \"$NAME$\"",
+    "description": "Aria-label for the rename button on a saved list entry",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "My Color Palette"
+      }
+    }
+  },
+  "exportList": {
+    "message": "Export list \"$NAME$\" as CSS",
+    "description": "Aria-label for the export button on a saved list entry",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "My Color Palette"
+      }
+    }
+  },
+  "import": {
+    "message": "Import",
+    "description": "Label for the import CSS file button"
+  },
+  "importBtn": {
+    "message": "Import CSS file as list",
+    "description": "Aria-label for the import button"
   }
 }

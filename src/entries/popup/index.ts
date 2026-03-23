@@ -1,12 +1,13 @@
 import { useChrome } from "../../composables/useChrome/index.js";
+import type { ColorVariable } from "../../composables/useChrome/index.js";
 import { useColorMatcher } from "../../composables/useColorMatcher/index.js";
-import { scanFrameColorVariables } from "../../utilities/scanner/index.js";
 import {
   renderColorVariables,
   renderPickedColors,
   renderSavedLists,
 } from "../../utilities/popupRenderer/index.js";
 import { themePresets, defaultThemeId, applyTheme } from "../../utilities/themes/index.js";
+import { exportListAsCss, triggerCssFileImport } from "../../utilities/cssImportExport/index.js";
 
 const {
   getStorage,
@@ -14,6 +15,7 @@ const {
   onStorageChanged,
   getActiveTab,
   executeScriptInFrames,
+  executeFileInFrames,
   injectContentScript,
   sendTabMessage,
   sendRuntimeMessage,
@@ -26,6 +28,7 @@ const resultsEl = document.getElementById("results") as HTMLDivElement;
 const varsSummaryEl = document.getElementById("vars-summary") as HTMLElement;
 const varsListEl = document.getElementById("vars-list") as HTMLDivElement;
 const saveBtn = document.getElementById("save-btn") as HTMLButtonElement;
+const importBtn = document.getElementById("import-btn") as HTMLButtonElement;
 const listNameInput = document.getElementById("list-name") as HTMLInputElement;
 const savedListsEl = document.getElementById("saved-lists") as HTMLDivElement;
 const varsSearchEl = document.getElementById("vars-search") as HTMLInputElement;
@@ -51,22 +54,46 @@ for (const el of document.querySelectorAll<HTMLInputElement>("[data-i18n-placeho
   if (msg) el.placeholder = msg;
 }
 
-let currentVars: Record<string, string> = {};
+let currentVars: ColorVariable[] = [];
 
-function displayVars(vars: Record<string, string>): void {
+// Migrate old Record<string, string> format to ColorVariable[]
+function normalizeVars(raw: unknown): ColorVariable[] {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    // Old format: { "--name": "value" }
+    return Object.entries(raw as Record<string, string>).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  }
+  return [];
+}
+
+function normalizeSavedLists(
+  raw: unknown,
+): Record<string, ColorVariable[]> {
+  if (!raw || typeof raw !== "object") return {};
+  const result: Record<string, ColorVariable[]> = {};
+  for (const [name, vars] of Object.entries(raw as Record<string, unknown>)) {
+    result[name] = normalizeVars(vars);
+  }
+  return result;
+}
+
+function displayVars(vars: ColorVariable[]): void {
   currentVars = vars;
   renderColorVariables(vars, elements, isColorValue);
 }
 
 function displayPicked(colors: string[]): void {
   getStorage("colorVariables").then((data) => {
-    const vars = data.colorVariables ?? {};
+    const vars = normalizeVars(data.colorVariables);
     renderPickedColors(colors, vars, resultsEl, findMatches);
   });
 }
 
 function displaySavedLists(
-  lists: Record<string, Record<string, string>>,
+  lists: Record<string, ColorVariable[]>,
   activeList: string | null,
 ): void {
   renderSavedLists(
@@ -76,7 +103,7 @@ function displaySavedLists(
     {
       onToggleList(name, isActive, vars) {
         const newActive = isActive ? null : name;
-        const newVars = isActive ? {} : vars;
+        const newVars: ColorVariable[] = isActive ? [] : vars;
         setStorage({ colorVariables: newVars, activeList: newActive }).then(() => {
           displayVars(newVars);
           displaySavedLists(lists, newActive);
@@ -89,6 +116,18 @@ function displaySavedLists(
       onDeleteList(name, isActive) {
         delete lists[name];
         const newActive = isActive ? null : activeList;
+        setStorage({ savedLists: lists, activeList: newActive }).then(() => {
+          displaySavedLists(lists, newActive);
+        });
+      },
+      onExportList(name, vars) {
+        exportListAsCss(name, vars);
+      },
+      onRenameList(oldName, newName) {
+        if (newName in lists) return; // Don't overwrite existing list
+        lists[newName] = lists[oldName];
+        delete lists[oldName];
+        const newActive = activeList === oldName ? newName : activeList;
         setStorage({ savedLists: lists, activeList: newActive }).then(() => {
           displaySavedLists(lists, newActive);
         });
@@ -187,8 +226,8 @@ getStorage(["selectedTheme", "colorVariables", "savedLists", "activeList", "pick
     applyTheme(activeThemeId);
     renderThemeGrid(activeThemeId);
 
-    displayVars(data.colorVariables ?? {});
-    displaySavedLists(data.savedLists ?? {}, data.activeList ?? null);
+    displayVars(normalizeVars(data.colorVariables));
+    displaySavedLists(normalizeSavedLists(data.savedLists), data.activeList ?? null);
 
     const colors: string[] = data.pickedColors ?? [];
     if (colors.length > 0) displayPicked(colors);
@@ -205,12 +244,24 @@ scanBtn.addEventListener("click", async () => {
   scanBtnText.textContent = chrome.i18n.getMessage("scanning");
 
   try {
-    const results = await executeScriptInFrames(tab.id, scanFrameColorVariables);
+    // Step 1: inject bundled scanner (stores result on globalThis)
+    await executeFileInFrames(tab.id, "dist/utilities/scanner/inject.js");
+    // Step 2: retrieve results via func mode (reliably captures return values)
+    const results = await executeScriptInFrames(tab.id, () => {
+      return (globalThis as Record<string, unknown>).__cssVarScanResult;
+    });
 
-    const merged: Record<string, string> = {};
+    const merged: ColorVariable[] = [];
+    const seen = new Set<string>();
     for (const result of results) {
-      if (result.result) {
-        Object.assign(merged, result.result);
+      if (result.result && Array.isArray(result.result)) {
+        for (const v of result.result as ColorVariable[]) {
+          const key = `${v.name}\0${v.value}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            merged.push(v);
+          }
+        }
       }
     }
 
@@ -223,12 +274,11 @@ scanBtn.addEventListener("click", async () => {
 });
 
 // Pick button
-pickBtn.addEventListener("click", async (event) => {
-  const append = event.shiftKey;
+pickBtn.addEventListener("click", async () => {
   const tab = await getActiveTab();
   if (!tab?.id) return;
 
-  const msg = { action: "start-eyedropper", append };
+  const msg = { action: "start-eyedropper" };
 
   try {
     await sendTabMessage(tab.id, msg);
@@ -248,10 +298,10 @@ saveBtn.addEventListener("click", () => {
   if (!name) return;
 
   getStorage(["colorVariables", "savedLists"]).then((data) => {
-    const vars: Record<string, string> = data.colorVariables ?? {};
-    if (Object.keys(vars).length === 0) return;
+    const vars = normalizeVars(data.colorVariables);
+    if (vars.length === 0) return;
 
-    const lists: Record<string, Record<string, string>> = data.savedLists ?? {};
+    const lists = normalizeSavedLists(data.savedLists);
     lists[name] = vars;
 
     setStorage({ savedLists: lists, activeList: name }).then(() => {
@@ -261,17 +311,42 @@ saveBtn.addEventListener("click", () => {
   });
 });
 
+// Import button
+importBtn.addEventListener("click", () => {
+  triggerCssFileImport((filename, vars) => {
+    if (vars.length === 0) return;
+
+    getStorage(["savedLists"]).then((data) => {
+      const lists = normalizeSavedLists(data.savedLists);
+
+      // Deduplicate name
+      let name = filename;
+      let counter = 2;
+      while (name in lists) {
+        name = `${filename} (${counter++})`;
+      }
+
+      lists[name] = vars;
+
+      setStorage({ savedLists: lists, activeList: name, colorVariables: vars }).then(() => {
+        displayVars(vars);
+        displaySavedLists(lists, name);
+      });
+    });
+  });
+});
+
 // Update display if data changes while popup is still open
 onStorageChanged((changes) => {
   if (changes.colorVariables?.newValue) {
-    displayVars(changes.colorVariables.newValue);
+    displayVars(normalizeVars(changes.colorVariables.newValue));
   }
   if (changes.pickedColors?.newValue) {
     displayPicked(changes.pickedColors.newValue);
   }
   if (changes.savedLists || changes.activeList) {
     getStorage(["savedLists", "activeList"]).then((data) => {
-      displaySavedLists(data.savedLists ?? {}, data.activeList ?? null);
+      displaySavedLists(normalizeSavedLists(data.savedLists), data.activeList ?? null);
     });
   }
 });

@@ -1,5 +1,6 @@
 import type { ColorMatch, TieredMatches } from "../../composables/useColorMatcher/index.js";
 import { EXACT_DISTANCE_THRESHOLD } from "../../composables/useColorMatcher/index.js";
+import type { ColorVariable } from "../../utilities/cssParser/index.js";
 
 export interface PopupElements {
   resultsEl: HTMLDivElement;
@@ -10,19 +11,21 @@ export interface PopupElements {
 }
 
 export interface SavedListCallbacks {
-  onToggleList: (name: string, isActive: boolean, vars: Record<string, string>) => void;
+  onToggleList: (name: string, isActive: boolean, vars: ColorVariable[]) => void;
   onDeleteList: (name: string, isActive: boolean) => void;
+  onExportList: (name: string, vars: ColorVariable[]) => void;
+  onRenameList: (oldName: string, newName: string) => void;
 }
 
 export function renderColorVariables(
-  vars: Record<string, string>,
+  vars: ColorVariable[],
   elements: Pick<PopupElements, "varsSummaryEl" | "varsListEl" | "varsSearchEl">,
   isColorValue: (value: string) => boolean,
 ): void {
   const { varsSummaryEl, varsListEl, varsSearchEl } = elements;
   varsListEl.innerHTML = "";
 
-  const allEntries = Object.entries(vars).filter(([, value]) => isColorValue(value));
+  const allEntries = vars.filter((v) => isColorValue(v.value));
   if (allEntries.length === 0) {
     varsSummaryEl.textContent = chrome.i18n.getMessage("colorVariablesCount", ["0"]);
     varsSearchEl.parentElement!.style.display = "none";
@@ -37,8 +40,8 @@ export function renderColorVariables(
   const query = varsSearchEl.value.toLowerCase();
   const entries = query
     ? allEntries.filter(
-        ([name, value]) =>
-          name.toLowerCase().includes(query) || value.toLowerCase().includes(query),
+        (v) =>
+          v.name.toLowerCase().includes(query) || v.value.toLowerCase().includes(query),
       )
     : allEntries;
 
@@ -49,7 +52,7 @@ export function renderColorVariables(
       ])
     : chrome.i18n.getMessage("colorVariablesCount", [String(allEntries.length)]);
 
-  for (const [name, value] of entries) {
+  for (const { name, value } of entries) {
     const entry = document.createElement("div");
     entry.className = "var-entry";
 
@@ -78,9 +81,9 @@ export function renderColorVariables(
 
 export function renderPickedColors(
   colors: string[],
-  vars: Record<string, string>,
+  vars: ColorVariable[],
   resultsEl: HTMLDivElement,
-  findMatches: (pickedHex: string, vars: Record<string, string>) => TieredMatches,
+  findMatches: (pickedHex: string, vars: ColorVariable[]) => TieredMatches,
 ): void {
   resultsEl.innerHTML = "";
 
@@ -128,7 +131,7 @@ export function renderPickedColors(
 }
 
 export function renderSavedLists(
-  lists: Record<string, Record<string, string>>,
+  lists: Record<string, ColorVariable[]>,
   activeList: string | null,
   savedListsEl: HTMLDivElement,
   callbacks: SavedListCallbacks,
@@ -140,7 +143,7 @@ export function renderSavedLists(
 
   for (const name of names) {
     const vars = lists[name];
-    const count = Object.values(vars).filter(isColorValue).length;
+    const count = vars.filter((v) => isColorValue(v.value)).length;
 
     const isActive = name === activeList;
 
@@ -149,7 +152,12 @@ export function renderSavedLists(
     entry.style.cursor = "pointer";
 
     entry.addEventListener("click", (e) => {
-      if ((e.target as HTMLElement).closest(".saved-list-delete")) return;
+      if (
+        (e.target as HTMLElement).closest(
+          ".saved-list-delete, .saved-list-export, .saved-list-rename, .saved-list-name-input",
+        )
+      )
+        return;
       callbacks.onToggleList(name, isActive, vars);
     });
 
@@ -157,9 +165,62 @@ export function renderSavedLists(
     nameEl.className = "saved-list-name";
     nameEl.textContent = name;
 
+    function startRename() {
+      const input = document.createElement("input");
+      input.type = "text";
+      input.className = "saved-list-name-input";
+      input.value = name;
+
+      function commit() {
+        const newName = input.value.trim();
+        if (newName && newName !== name) {
+          callbacks.onRenameList(name, newName);
+        } else {
+          input.replaceWith(nameEl);
+        }
+      }
+
+      input.addEventListener("keydown", (ke) => {
+        if (ke.key === "Enter") {
+          ke.preventDefault();
+          commit();
+        }
+        if (ke.key === "Escape") {
+          input.replaceWith(nameEl);
+        }
+      });
+      input.addEventListener("blur", commit);
+
+      nameEl.replaceWith(input);
+      input.focus();
+      input.select();
+    }
+
     const countEl = document.createElement("span");
     countEl.className = "saved-list-count";
     countEl.textContent = `(${count})`;
+
+    const renameBtn = document.createElement("button");
+    renameBtn.type = "button";
+    renameBtn.className = "saved-list-rename";
+    renameBtn.ariaLabel = chrome.i18n.getMessage("renameList", [name]);
+    renameBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>';
+    renameBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      startRename();
+    });
+
+    const exportBtn = document.createElement("button");
+    exportBtn.type = "button";
+    exportBtn.className = "saved-list-export";
+    exportBtn.ariaLabel = chrome.i18n.getMessage("exportList", [name]);
+    exportBtn.innerHTML =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M5 20h14v-2H5zM19 9h-4V3H9v6H5l7 7z"/></svg>';
+    exportBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      callbacks.onExportList(name, vars);
+    });
 
     const deleteBtn = document.createElement("button");
     deleteBtn.type = "button";
@@ -173,6 +234,8 @@ export function renderSavedLists(
 
     entry.appendChild(nameEl);
     entry.appendChild(countEl);
+    entry.appendChild(renameBtn);
+    entry.appendChild(exportBtn);
     entry.appendChild(deleteBtn);
     savedListsEl.appendChild(entry);
   }

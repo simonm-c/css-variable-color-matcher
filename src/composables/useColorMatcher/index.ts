@@ -3,6 +3,7 @@ import {
   parseLightDark,
   colorDistanceOklab,
 } from "../../utilities/colorParsing/index.js";
+import type { ColorVariable } from "../../utilities/cssParser/index.js";
 
 export const EXACT_DISTANCE_THRESHOLD = 2;
 export const CLOSE_MATCHES_COUNT = 5;
@@ -24,13 +25,13 @@ function isColorValue(value: string): boolean {
   return parseColor(value) !== null || parseLightDark(value) !== null;
 }
 
-function findMatches(pickedHex: string, vars: Record<string, string>): TieredMatches {
+function findMatches(pickedHex: string, vars: ColorVariable[]): TieredMatches {
   const pickedColor = parseColor(pickedHex);
   if (!pickedColor) return { exact: [], close: [], far: [] };
 
   const matches: ColorMatch[] = [];
 
-  for (const [name, value] of Object.entries(vars)) {
+  for (const { name, value } of vars) {
     const varColor = parseColor(value);
     if (varColor) {
       const distance = colorDistanceOklab(pickedColor, varColor);
