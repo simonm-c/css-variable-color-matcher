@@ -1,9 +1,38 @@
 import { vi } from "vitest";
+import messages from "../_locales/en/messages.json";
+
+type Messages = Record<string, { message: string; placeholders?: Record<string, { content: string }> }>;
+
+function getMessage(key: string, substitutions?: string | string[]): string {
+  const entry = (messages as Messages)[key];
+  if (!entry) return "";
+  let msg = entry.message;
+  const subs = substitutions
+    ? Array.isArray(substitutions)
+      ? substitutions
+      : [substitutions]
+    : [];
+  for (let i = 0; i < subs.length; i++) {
+    msg = msg.replace(new RegExp(`\\$${i + 1}`, "g"), subs[i]);
+    // Also replace named placeholders that reference $1, $2, etc.
+    if (entry.placeholders) {
+      for (const [name, def] of Object.entries(entry.placeholders)) {
+        if (def.content === `$${i + 1}`) {
+          msg = msg.replace(new RegExp(`\\$${name.toUpperCase()}\\$`, "g"), subs[i]);
+        }
+      }
+    }
+  }
+  return msg;
+}
 
 export function createChromeMock() {
   let storage: Record<string, unknown> = {};
 
   const mock = {
+    i18n: {
+      getMessage: vi.fn(getMessage),
+    },
     storage: {
       local: {
         get: vi.fn((keys: string | string[], cb?: (data: Record<string, unknown>) => void) => {

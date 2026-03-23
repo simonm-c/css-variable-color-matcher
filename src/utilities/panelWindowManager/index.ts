@@ -3,10 +3,25 @@
 
 let panelWindowId: number | undefined;
 
+// Switch toolbar icon based on browser theme (dark/light).
+// Service workers lack matchMedia, so the popup sends "update-icon" messages.
+function updateIcon(isDark: boolean): void {
+  const suffix = isDark ? "-dark" : "";
+  chrome.action.setIcon({
+    path: {
+      "16": `icons/icon16${suffix}.png`,
+      "48": `icons/icon48${suffix}.png`,
+      "128": `icons/icon128${suffix}.png`,
+    },
+  });
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
-  const msg = message as { action?: string };
+  const msg = message as { action?: string; isDark?: boolean };
   if (msg.action === "open-panel") {
     openPanel();
+  } else if (msg.action === "update-icon" && typeof msg.isDark === "boolean") {
+    updateIcon(msg.isDark);
   }
   return undefined;
 });

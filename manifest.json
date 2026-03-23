@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "CSS Variable Color Matcher",
+  "name": "__MSG_extName__",
   "version": "1.0.0",
-  "description": "Match colors to CSS custom properties (variables) on any webpage",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["<all_urls>"],
   "action": {

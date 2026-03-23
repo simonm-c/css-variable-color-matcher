@@ -6,6 +6,7 @@ import {
   renderPickedColors,
   renderSavedLists,
 } from "../../utilities/popupRenderer/index.js";
+import { themePresets, defaultThemeId, applyTheme } from "../../utilities/themes/index.js";
 
 const {
   getStorage,
@@ -31,6 +32,32 @@ const varsSearchEl = document.getElementById("vars-search") as HTMLInputElement;
 const popoutBtn = document.getElementById("popout-btn") as HTMLButtonElement;
 
 const elements = { varsSummaryEl, varsListEl, varsSearchEl };
+
+// Hydrate static i18n strings from data-i18n attributes
+for (const el of document.querySelectorAll<HTMLElement>("[data-i18n]")) {
+  const msg = chrome.i18n.getMessage(el.dataset.i18n!);
+  if (msg) el.textContent = msg;
+}
+for (const el of document.querySelectorAll<HTMLElement>("[data-i18n-title]")) {
+  const msg = chrome.i18n.getMessage(el.dataset.i18nTitle!);
+  if (msg) el.title = msg;
+}
+for (const el of document.querySelectorAll<HTMLElement>("[data-i18n-aria-label]")) {
+  const msg = chrome.i18n.getMessage(el.dataset.i18nAriaLabel!);
+  if (msg) el.setAttribute("aria-label", msg);
+}
+for (const el of document.querySelectorAll<HTMLInputElement>("[data-i18n-placeholder]")) {
+  const msg = chrome.i18n.getMessage(el.dataset.i18nPlaceholder!);
+  if (msg) el.placeholder = msg;
+}
+
+// Sync toolbar icon with system dark/light theme
+function syncIconTheme(isDark: boolean): void {
+  sendRuntimeMessage({ action: "update-icon", isDark });
+}
+const darkMq = matchMedia("(prefers-color-scheme: dark)");
+syncIconTheme(darkMq.matches);
+darkMq.addEventListener("change", (e) => syncIconTheme(e.matches));
 
 let currentVars: Record<string, string> = {};
 
@@ -85,6 +112,61 @@ popoutBtn.addEventListener("click", () => {
   window.close();
 });
 
+// Theme picker
+const themeBtn = document.getElementById("theme-btn") as HTMLButtonElement;
+const themeDropdown = document.getElementById("theme-dropdown") as HTMLDivElement;
+const themeGrid = document.getElementById("theme-grid") as HTMLDivElement;
+let activeThemeId = defaultThemeId;
+
+themeBtn.addEventListener("click", () => {
+  const open = themeDropdown.classList.toggle("hidden");
+  themeBtn.classList.toggle("active", !open);
+});
+
+function renderThemeGrid(selectedId: string): void {
+  themeGrid.innerHTML = "";
+  for (const [id, preset] of Object.entries(themePresets)) {
+    const swatch = document.createElement("button");
+    swatch.type = "button";
+    swatch.className = `theme-swatch${id === selectedId ? " active" : ""}`;
+    swatch.title = preset.name;
+    swatch.ariaLabel = preset.name;
+
+    const lightHalf = document.createElement("div");
+    lightHalf.className = "theme-swatch-light";
+    lightHalf.style.backgroundColor = preset.swatchLight;
+
+    const darkHalf = document.createElement("div");
+    darkHalf.className = "theme-swatch-dark";
+    darkHalf.style.backgroundColor = preset.swatchDark;
+
+    const check = document.createElement("div");
+    check.className = "check-mark";
+    check.innerHTML =
+      '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+
+    swatch.appendChild(lightHalf);
+    swatch.appendChild(darkHalf);
+    swatch.appendChild(check);
+
+    swatch.addEventListener("click", () => {
+      activeThemeId = id;
+      applyTheme(id);
+      setStorage({ selectedTheme: id });
+      renderThemeGrid(id);
+    });
+
+    themeGrid.appendChild(swatch);
+  }
+}
+
+// Apply saved theme immediately
+getStorage("selectedTheme").then((data) => {
+  activeThemeId = data.selectedTheme ?? defaultThemeId;
+  applyTheme(activeThemeId);
+  renderThemeGrid(activeThemeId);
+});
+
 // Search filter
 varsSearchEl.addEventListener("input", () => {
   displayVars(currentVars);
@@ -109,7 +191,7 @@ scanBtn.addEventListener("click", async () => {
 
   const scanBtnText = document.getElementById("scan-btn-text") as HTMLSpanElement;
   scanBtn.disabled = true;
-  scanBtnText.textContent = "Scanning...";
+  scanBtnText.textContent = chrome.i18n.getMessage("scanning");
 
   try {
     const results = await executeScriptInFrames(tab.id, scanFrameColorVariables);
@@ -125,7 +207,7 @@ scanBtn.addEventListener("click", async () => {
     displayVars(merged);
   } finally {
     scanBtn.disabled = false;
-    scanBtnText.textContent = "Scan Page Variables";
+    scanBtnText.textContent = chrome.i18n.getMessage("scanVariables");
   }
 });
 

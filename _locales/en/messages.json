@@ -1,0 +1,100 @@
+{
+  "extName": {
+    "message": "CSS Variable Color Matcher",
+    "description": "Name of the extension shown in the browser toolbar and Chrome Web Store"
+  },
+  "extDescription": {
+    "message": "Match colors to CSS custom properties (variables) on any webpage",
+    "description": "Short description shown in the Chrome Web Store listing"
+  },
+  "extDescriptionLong": {
+    "message": "Scan any webpage for CSS custom properties, pick a color with the built-in eyedropper, and instantly find the closest matching variable. Supports hex, rgb, hsl, oklch, light-dark(), and more. Save variable lists for quick comparison across pages.",
+    "description": "Long description for reference in the Chrome Web Store listing (not used in code)"
+  },
+  "heading": {
+    "message": "CSS Variable Color Matcher",
+    "description": "Main heading displayed in the popup"
+  },
+  "openInWindow": {
+    "message": "Open in window",
+    "description": "Tooltip and aria-label for the pop-out button"
+  },
+  "scanVariables": {
+    "message": "Scan Variables",
+    "description": "Label for the scan button"
+  },
+  "scanning": {
+    "message": "Scanning...",
+    "description": "Scan button label while scanning is in progress"
+  },
+  "pickColor": {
+    "message": "Pick Color",
+    "description": "Label for the color picker button"
+  },
+  "listNamePlaceholder": {
+    "message": "List name...",
+    "description": "Placeholder text for the saved list name input"
+  },
+  "save": {
+    "message": "Save",
+    "description": "Label for the save button"
+  },
+  "colorVariables": {
+    "message": "Color Variables",
+    "description": "Summary label for the variables section"
+  },
+  "colorVariablesCount": {
+    "message": "Color Variables ($COUNT$)",
+    "description": "Summary label with total count",
+    "placeholders": {
+      "count": {
+        "content": "$1",
+        "example": "42"
+      }
+    }
+  },
+  "colorVariablesFiltered": {
+    "message": "Color Variables ($FILTERED$ / $TOTAL$)",
+    "description": "Summary label with filtered and total count",
+    "placeholders": {
+      "filtered": {
+        "content": "$1",
+        "example": "5"
+      },
+      "total": {
+        "content": "$2",
+        "example": "42"
+      }
+    }
+  },
+  "searchVariablesPlaceholder": {
+    "message": "Search variables...",
+    "description": "Placeholder text for the variable search input"
+  },
+  "noVariablesScanned": {
+    "message": "No variables scanned yet.",
+    "description": "Message shown before any scan has been performed"
+  },
+  "noColorVariablesFound": {
+    "message": "No color variables found on this page.",
+    "description": "Message shown when scan finds no color variables"
+  },
+  "noColorPicked": {
+    "message": "No color picked yet. Click the button above to start.",
+    "description": "Message shown before any color has been picked"
+  },
+  "noVariablesToCompare": {
+    "message": "No variables to compare. Scan the page first.",
+    "description": "Message shown when a color is picked but no variables are scanned"
+  },
+  "deleteList": {
+    "message": "Delete list \"$NAME$\"",
+    "description": "Aria-label for the delete button on a saved list entry",
+    "placeholders": {
+      "name": {
+        "content": "$1",
+        "example": "My Color Palette"
+      }
+    }
+  }
+}

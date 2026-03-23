@@ -1,0 +1,466 @@
+/**
+ * Chrome "Customise Chrome" theme presets.
+ *
+ * Seed colors and variants from Chromium source:
+ *   chrome/browser/ui/webui/cr_components/theme_color_picker/customize_chrome_colors.cc
+ *
+ * Light/dark palettes derived using Material Design 3 TonalSpot/Neutral
+ * algorithms in OKLCH color space.
+ */
+
+export interface ThemeColors {
+  bg: string;
+  surface: string;
+  surfaceActive: string;
+  primary: string;
+  primaryHover: string;
+  text: string;
+  textMuted: string;
+  textDim: string;
+  textSubtle: string;
+  border: string;
+}
+
+export interface ThemePreset {
+  name: string;
+  swatchLight: string;
+  swatchDark: string;
+  light: ThemeColors;
+  dark: ThemeColors;
+}
+
+export const themePresets: Record<string, ThemePreset> = {
+  default: {
+    name: "Default",
+    swatchLight: "#dadce0",
+    swatchDark: "#35363a",
+    light: {
+      bg: "#f1f3f4",
+      surface: "#ffffff",
+      surfaceActive: "#e8eaed",
+      primary: "#1a73e8",
+      primaryHover: "#1557b0",
+      text: "#202124",
+      textMuted: "#5f6368",
+      textDim: "#80868b",
+      textSubtle: "#9aa0a6",
+      border: "#dadce0",
+    },
+    dark: {
+      bg: "#292a2d",
+      surface: "#35363a",
+      surfaceActive: "#3c4043",
+      primary: "#8ab4f8",
+      primaryHover: "#669df6",
+      text: "#e8eaed",
+      textMuted: "#bdc1c6",
+      textDim: "#9aa0a6",
+      textSubtle: "#80868b",
+      border: "#3c4043",
+    },
+  },
+  blue: {
+    name: "Blue",
+    swatchLight: "#d0dff9",
+    swatchDark: "#113f9c",
+    light: {
+      bg: "#f5f9fe",
+      surface: "#ecf2fd",
+      surfaceActive: "#e4ecf9",
+      primary: "#113f9c",
+      primaryHover: "#082769",
+      text: "#010309",
+      textMuted: "#232e42",
+      textDim: "#3c485e",
+      textSubtle: "#57647b",
+      border: "#b0bed8",
+    },
+    dark: {
+      bg: "#0b0f18",
+      surface: "#11161f",
+      surfaceActive: "#1c222b",
+      primary: "#a2bef2",
+      primaryHover: "#759ee9",
+      text: "#d7deec",
+      textMuted: "#b0bed8",
+      textDim: "#919fb8",
+      textSubtle: "#738199",
+      border: "#232e42",
+    },
+  },
+  "cool-grey": {
+    name: "Cool Grey",
+    swatchLight: "#d0dff9",
+    swatchDark: "#364868",
+    light: {
+      bg: "#f5f9fe",
+      surface: "#ecf2fc",
+      surfaceActive: "#e6ebf6",
+      primary: "#364868",
+      primaryHover: "#1d2d4c",
+      text: "#020307",
+      textMuted: "#282e38",
+      textDim: "#424853",
+      textSubtle: "#5d646f",
+      border: "#b7becb",
+    },
+    dark: {
+      bg: "#0c0f16",
+      surface: "#12161d",
+      surfaceActive: "#1e2229",
+      primary: "#a9bee5",
+      primaryHover: "#8a9fc4",
+      text: "#d9dee8",
+      textMuted: "#b7becb",
+      textDim: "#989fab",
+      textSubtle: "#7a818d",
+      border: "#282e38",
+    },
+  },
+  grey: {
+    name: "Grey",
+    swatchLight: "#e8ddc1",
+    swatchDark: "#54461e",
+    light: {
+      bg: "#faf8f2",
+      surface: "#f6f2e7",
+      surfaceActive: "#efebe0",
+      primary: "#54461e",
+      primaryHover: "#3a2c01",
+      text: "#050301",
+      textMuted: "#322d22",
+      textDim: "#4c473c",
+      textSubtle: "#686357",
+      border: "#c3bdb0",
+    },
+    dark: {
+      bg: "#120f08",
+      surface: "#19160e",
+      surfaceActive: "#242119",
+      primary: "#cdbd92",
+      primaryHover: "#ad9d74",
+      text: "#e2ded3",
+      textMuted: "#c3bdb0",
+      textDim: "#a39e91",
+      textSubtle: "#858073",
+      border: "#322d22",
+    },
+  },
+  aqua: {
+    name: "Aqua",
+    swatchLight: "#c2e7e1",
+    swatchDark: "#005f54",
+    light: {
+      bg: "#f3faf9",
+      surface: "#e7f6f3",
+      surfaceActive: "#ddf0ed",
+      primary: "#005f54",
+      primaryHover: "#003e36",
+      text: "#000504",
+      textMuted: "#123431",
+      textDim: "#2d4f4b",
+      textSubtle: "#496b66",
+      border: "#a2c7c1",
+    },
+    dark: {
+      bg: "#051211",
+      surface: "#0b1917",
+      surfaceActive: "#162523",
+      primary: "#7fcfc5",
+      primaryHover: "#16b6a9",
+      text: "#d0e3e0",
+      textMuted: "#a2c7c1",
+      textDim: "#83a7a2",
+      textSubtle: "#658883",
+      border: "#123431",
+    },
+  },
+  green: {
+    name: "Green",
+    swatchLight: "#cfe5cd",
+    swatchDark: "#005b00",
+    light: {
+      bg: "#f5faf5",
+      surface: "#ecf5eb",
+      surfaceActive: "#e4efe3",
+      primary: "#005b00",
+      primaryHover: "#003b00",
+      text: "#010401",
+      textMuted: "#223320",
+      textDim: "#3b4d39",
+      textSubtle: "#566954",
+      border: "#b0c5ad",
+    },
+    dark: {
+      bg: "#0a120a",
+      surface: "#111810",
+      surfaceActive: "#1c241b",
+      primary: "#a0cb9c",
+      primaryHover: "#70b16b",
+      text: "#d7e2d6",
+      textMuted: "#b0c5ad",
+      textDim: "#91a58e",
+      textSubtle: "#738771",
+      border: "#223320",
+    },
+  },
+  viridian: {
+    name: "Viridian",
+    swatchLight: "#d0e5cd",
+    swatchDark: "#355031",
+    light: {
+      bg: "#f5faf5",
+      surface: "#ecf5eb",
+      surfaceActive: "#e6eee5",
+      primary: "#355031",
+      primaryHover: "#1b3518",
+      text: "#020402",
+      textMuted: "#283027",
+      textDim: "#424b41",
+      textSubtle: "#5d665c",
+      border: "#b7c1b5",
+    },
+    dark: {
+      bg: "#0c110b",
+      surface: "#121812",
+      surfaceActive: "#1e241d",
+      primary: "#a8c8a4",
+      primaryHover: "#8aa886",
+      text: "#d9e1d8",
+      textMuted: "#b7c1b5",
+      textDim: "#98a296",
+      textSubtle: "#7a8378",
+      border: "#283027",
+    },
+  },
+  citron: {
+    name: "Citron",
+    swatchLight: "#e6dec1",
+    swatchDark: "#624200",
+    light: {
+      bg: "#faf8f3",
+      surface: "#f5f2e6",
+      surfaceActive: "#efebdd",
+      primary: "#624200",
+      primaryHover: "#412a00",
+      text: "#050300",
+      textMuted: "#342e15",
+      textDim: "#4e482f",
+      textSubtle: "#6a6349",
+      border: "#c5bea1",
+    },
+    dark: {
+      bg: "#120f06",
+      surface: "#19160b",
+      surfaceActive: "#242217",
+      primary: "#cdbe82",
+      primaryHover: "#b59d3a",
+      text: "#e2ded0",
+      textMuted: "#c5bea1",
+      textDim: "#a69f83",
+      textSubtle: "#878065",
+      border: "#342e15",
+    },
+  },
+  orange: {
+    name: "Orange",
+    swatchLight: "#f4d7c6",
+    swatchDark: "#841e00",
+    light: {
+      bg: "#fdf7f4",
+      surface: "#fbefe8",
+      surfaceActive: "#f7e8df",
+      primary: "#841e00",
+      primaryHover: "#581100",
+      text: "#070201",
+      textMuted: "#3e281a",
+      textDim: "#594233",
+      textSubtle: "#765d4e",
+      border: "#d3b7a6",
+    },
+    dark: {
+      bg: "#160d07",
+      surface: "#1d140d",
+      surfaceActive: "#2a1f19",
+      primary: "#e8b08e",
+      primaryHover: "#d88853",
+      text: "#e9dbd2",
+      textMuted: "#d3b7a6",
+      textDim: "#b39888",
+      textSubtle: "#947a6a",
+      border: "#3e281a",
+    },
+  },
+  apricot: {
+    name: "Apricot",
+    swatchLight: "#f5d7c7",
+    swatchDark: "#623e29",
+    light: {
+      bg: "#fdf7f4",
+      surface: "#fbefe9",
+      surfaceActive: "#f4e9e2",
+      primary: "#623e29",
+      primaryHover: "#45240f",
+      text: "#060201",
+      textMuted: "#362b25",
+      textDim: "#51453e",
+      textSubtle: "#6d6059",
+      border: "#c9bab2",
+    },
+    dark: {
+      bg: "#150e0a",
+      surface: "#1c1410",
+      surfaceActive: "#28201b",
+      primary: "#deb39b",
+      primaryHover: "#be947d",
+      text: "#e7dbd5",
+      textMuted: "#c9bab2",
+      textDim: "#a99b94",
+      textSubtle: "#8b7d76",
+      border: "#362b25",
+    },
+  },
+  rose: {
+    name: "Rose",
+    swatchLight: "#f7d4d9",
+    swatchDark: "#870139",
+    light: {
+      bg: "#fef6f7",
+      surface: "#fceef0",
+      surfaceActive: "#f8e6e9",
+      primary: "#870139",
+      primaryHover: "#5a0024",
+      text: "#080203",
+      textMuted: "#3f252a",
+      textDim: "#5b3f44",
+      textSubtle: "#785a5f",
+      border: "#d6b4b9",
+    },
+    dark: {
+      bg: "#170c0e",
+      surface: "#1e1214",
+      surfaceActive: "#2a1e20",
+      primary: "#eba9b5",
+      primaryHover: "#dd7d92",
+      text: "#ebd9dc",
+      textMuted: "#d6b4b9",
+      textDim: "#b5959a",
+      textSubtle: "#96777c",
+      border: "#3f252a",
+    },
+  },
+  pink: {
+    name: "Pink",
+    swatchLight: "#f7d4d9",
+    swatchDark: "#633a42",
+    light: {
+      bg: "#fef6f7",
+      surface: "#fceef0",
+      surfaceActive: "#f5e7e9",
+      primary: "#633a42",
+      primaryHover: "#462029",
+      text: "#060203",
+      textMuted: "#372a2c",
+      textDim: "#524346",
+      textSubtle: "#6e5f61",
+      border: "#cab9bb",
+    },
+    dark: {
+      bg: "#150d0e",
+      surface: "#1c1315",
+      surfaceActive: "#281f20",
+      primary: "#e1aeb7",
+      primaryHover: "#c08f98",
+      text: "#e8dadc",
+      textMuted: "#cab9bb",
+      textDim: "#aa9a9c",
+      textSubtle: "#8b7c7e",
+      border: "#372a2c",
+    },
+  },
+  fuchsia: {
+    name: "Fuchsia",
+    swatchLight: "#edd5ec",
+    swatchDark: "#721871",
+    light: {
+      bg: "#fcf7fb",
+      surface: "#f8eef7",
+      surfaceActive: "#f3e7f2",
+      primary: "#721871",
+      primaryHover: "#4b0d4b",
+      text: "#060206",
+      textMuted: "#392738",
+      textDim: "#544053",
+      textSubtle: "#705b6f",
+      border: "#cdb5cb",
+    },
+    dark: {
+      bg: "#140c14",
+      surface: "#1b131b",
+      surfaceActive: "#271e26",
+      primary: "#dbacd8",
+      primaryHover: "#c783c4",
+      text: "#e6dae5",
+      textMuted: "#cdb5cb",
+      textDim: "#ad96ab",
+      textSubtle: "#8e788c",
+      border: "#392738",
+    },
+  },
+  violet: {
+    name: "Violet",
+    swatchLight: "#e3d8f4",
+    swatchDark: "#5b268c",
+    light: {
+      bg: "#f9f7fd",
+      surface: "#f4effb",
+      surfaceActive: "#eee8f6",
+      primary: "#5b268c",
+      primaryHover: "#3c165d",
+      text: "#040208",
+      textMuted: "#32293e",
+      textDim: "#4c425a",
+      textSubtle: "#685e76",
+      border: "#c3b8d3",
+    },
+    dark: {
+      bg: "#110d17",
+      surface: "#18141e",
+      surfaceActive: "#241f2a",
+      primary: "#c9b1e8",
+      primaryHover: "#af8bdb",
+      text: "#e1dbe9",
+      textMuted: "#c3b8d3",
+      textDim: "#a499b3",
+      textSubtle: "#857b94",
+      border: "#32293e",
+    },
+  },
+};
+
+export const defaultThemeId = "default";
+
+const cssVarMap: Record<keyof ThemeColors, string> = {
+  bg: "--color-bg",
+  surface: "--color-surface",
+  surfaceActive: "--color-surface-active",
+  primary: "--color-primary",
+  primaryHover: "--color-primary-hover",
+  text: "--color-text",
+  textMuted: "--color-text-muted",
+  textDim: "--color-text-dim",
+  textSubtle: "--color-text-subtle",
+  border: "--color-border",
+};
+
+export function applyTheme(themeId: string): void {
+  const preset = themePresets[themeId];
+  if (!preset) return;
+
+  const root = document.documentElement;
+  for (const [key, cssVar] of Object.entries(cssVarMap)) {
+    const light = preset.light[key as keyof ThemeColors];
+    const dark = preset.dark[key as keyof ThemeColors];
+    root.style.setProperty(cssVar, `light-dark(${light}, ${dark})`);
+  }
+}
