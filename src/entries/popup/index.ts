@@ -110,9 +110,28 @@ const themeDropdown = document.getElementById("theme-dropdown") as HTMLDivElemen
 const themeGrid = document.getElementById("theme-grid") as HTMLDivElement;
 let activeThemeId = defaultThemeId;
 
-themeBtn.addEventListener("click", () => {
-  const open = themeDropdown.classList.toggle("hidden");
-  themeBtn.classList.toggle("active", !open);
+function closeThemeDropdown(): void {
+  themeDropdown.classList.add("hidden");
+  themeBtn.classList.remove("active");
+}
+
+themeBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  const wasHidden = themeDropdown.classList.toggle("hidden");
+  themeBtn.classList.toggle("active", !wasHidden);
+});
+
+document.addEventListener("click", (e) => {
+  if (!themeDropdown.classList.contains("hidden") && !themeDropdown.contains(e.target as Node)) {
+    closeThemeDropdown();
+  }
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && !themeDropdown.classList.contains("hidden")) {
+    closeThemeDropdown();
+    themeBtn.focus();
+  }
 });
 
 function renderThemeGrid(selectedId: string): void {
@@ -123,6 +142,7 @@ function renderThemeGrid(selectedId: string): void {
     swatch.className = `theme-swatch${id === selectedId ? " active" : ""}`;
     swatch.title = preset.name;
     swatch.ariaLabel = preset.name;
+    swatch.dataset.themeId = id;
 
     const lightHalf = document.createElement("div");
     lightHalf.className = "theme-swatch-light";
@@ -142,39 +162,38 @@ function renderThemeGrid(selectedId: string): void {
     swatch.appendChild(check);
 
     swatch.addEventListener("click", () => {
+      if (id === activeThemeId) return;
+      const prev = themeGrid.querySelector(".theme-swatch.active");
+      if (prev) prev.classList.remove("active");
+      swatch.classList.add("active");
       activeThemeId = id;
       applyTheme(id);
       setStorage({ selectedTheme: id });
-      renderThemeGrid(id);
     });
 
     themeGrid.appendChild(swatch);
   }
 }
 
-// Apply saved theme immediately
-getStorage("selectedTheme").then((data) => {
-  activeThemeId = data.selectedTheme ?? defaultThemeId;
-  applyTheme(activeThemeId);
-  renderThemeGrid(activeThemeId);
-});
-
 // Search filter
 varsSearchEl.addEventListener("input", () => {
   displayVars(currentVars);
 });
 
-// Display cached data on popup open
-getStorage(["colorVariables", "savedLists", "activeList"]).then((data) => {
-  displayVars(data.colorVariables ?? {});
-  displaySavedLists(data.savedLists ?? {}, data.activeList ?? null);
-});
+// Hydrate all cached data in a single storage read
+getStorage(["selectedTheme", "colorVariables", "savedLists", "activeList", "pickedColors"]).then(
+  (data) => {
+    activeThemeId = data.selectedTheme ?? defaultThemeId;
+    applyTheme(activeThemeId);
+    renderThemeGrid(activeThemeId);
 
-// Display previously picked colors on popup open
-getStorage("pickedColors").then((data) => {
-  const colors: string[] = data.pickedColors ?? [];
-  if (colors.length > 0) displayPicked(colors);
-});
+    displayVars(data.colorVariables ?? {});
+    displaySavedLists(data.savedLists ?? {}, data.activeList ?? null);
+
+    const colors: string[] = data.pickedColors ?? [];
+    if (colors.length > 0) displayPicked(colors);
+  },
+);
 
 // Scan button
 scanBtn.addEventListener("click", async () => {
@@ -215,7 +234,7 @@ pickBtn.addEventListener("click", async (event) => {
     await sendTabMessage(tab.id, msg);
   } catch {
     try {
-      await injectContentScript(tab.id, "content.js");
+      await injectContentScript(tab.id, "dist/utilities/eyedropperHandler/index.js");
       await sendTabMessage(tab.id, msg);
     } catch {
       // Injection failed (chrome:// pages, PDF viewers, etc.)
