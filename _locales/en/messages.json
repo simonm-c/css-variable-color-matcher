@@ -4,7 +4,7 @@
     "description": "Name of the extension shown in the browser toolbar and Chrome Web Store"
   },
   "extDescription": {
-    "message": "Match colors to CSS custom properties (variables) on any webpage",
+    "message": "Pick any color from a page and instantly find the closest CSS variable. Perceptual OKLab matching across all Color Level 4 syntaxes.",
     "description": "Short description shown in the Chrome Web Store listing"
   },
   "extDescriptionLong": {
