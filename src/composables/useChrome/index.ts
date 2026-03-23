@@ -114,9 +114,9 @@ function onWindowRemoved(callback: (windowId: number) => void): void {
 async function scanTabColorVariables(tabId: number): Promise<ColorVariable[]> {
   await executeFileInFrames(tabId, "dist/utilities/scanner/inject.js");
   const results = await executeScriptInFrames(tabId, () => {
-    const r = (globalThis as Record<string, unknown>).__cssVarScanResult;
+    const scanResult = (globalThis as Record<string, unknown>).__cssVarScanResult;
     delete (globalThis as Record<string, unknown>).__cssVarScanResult;
-    return r;
+    return scanResult;
   });
   const allVars: ColorVariable[] = [];
   for (const result of results) {

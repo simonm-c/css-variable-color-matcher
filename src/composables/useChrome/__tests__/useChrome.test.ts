@@ -129,8 +129,18 @@ describe("useChrome", () => {
       chromeMock.scripting.executeScript
         .mockResolvedValueOnce([{ result: undefined }])
         .mockResolvedValueOnce([
-          { result: [{ name: "--a", value: "red" }, { name: "--b", value: "blue" }] },
-          { result: [{ name: "--a", value: "red" }, { name: "--c", value: "green" }] },
+          {
+            result: [
+              { name: "--a", value: "red" },
+              { name: "--b", value: "blue" },
+            ],
+          },
+          {
+            result: [
+              { name: "--a", value: "red" },
+              { name: "--c", value: "green" },
+            ],
+          },
         ]);
 
       const result = await scanTabColorVariables(1);

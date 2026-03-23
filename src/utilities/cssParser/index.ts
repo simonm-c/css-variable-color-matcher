@@ -6,11 +6,11 @@ export interface ColorVariable {
 export function deduplicateVariables(vars: ColorVariable[]): ColorVariable[] {
   const seen = new Set<string>();
   const result: ColorVariable[] = [];
-  for (const v of vars) {
-    const key = `${v.name}\0${v.value}`;
+  for (const colorVar of vars) {
+    const key = `${colorVar.name}\0${colorVar.value}`;
     if (!seen.has(key)) {
       seen.add(key);
-      result.push(v);
+      result.push(colorVar);
     }
   }
   return result;
@@ -99,8 +99,8 @@ function stripComments(text: string): string {
   return segments.join("");
 }
 
-function isWhitespace(ch: string): boolean {
-  return ch === " " || ch === "\t" || ch === "\n" || ch === "\r";
+function isWhitespace(char: string): boolean {
+  return char === " " || char === "\t" || char === "\n" || char === "\r";
 }
 
 function skipToBlockOrSemicolon(text: string, i: number): number {
@@ -156,22 +156,22 @@ function readDeclaration(
   const valueStart = i;
   let parenDepth = 0;
   while (i < text.length) {
-    const ch = text[i];
-    if (ch === '"' || ch === "'") {
+    const char = text[i];
+    if (char === '"' || char === "'") {
       i = skipString(text, i);
       continue;
     }
-    if (ch === "(") {
+    if (char === "(") {
       parenDepth++;
       i++;
       continue;
     }
-    if (ch === ")") {
+    if (char === ")") {
       parenDepth--;
       i++;
       continue;
     }
-    if (parenDepth === 0 && (ch === ";" || ch === "}")) {
+    if (parenDepth === 0 && (char === ";" || char === "}")) {
       break;
     }
     i++;
@@ -187,13 +187,13 @@ function readDeclaration(
   return { name, value, end: i };
 }
 
-function isPropertyChar(ch: string): boolean {
+function isPropertyChar(char: string): boolean {
   return (
-    (ch >= "a" && ch <= "z") ||
-    (ch >= "A" && ch <= "Z") ||
-    (ch >= "0" && ch <= "9") ||
-    ch === "-" ||
-    ch === "_"
+    (char >= "a" && char <= "z") ||
+    (char >= "A" && char <= "Z") ||
+    (char >= "0" && char <= "9") ||
+    char === "-" ||
+    char === "_"
   );
 }
 
@@ -211,17 +211,17 @@ function skipString(text: string, i: number): number {
 function skipToNextDeclarationOrBlock(text: string, i: number): number {
   // Skip forward until we hit something meaningful: ; { } or a property-like start
   while (i < text.length) {
-    const ch = text[i];
-    if (ch === ";" || ch === "{" || ch === "}") {
-      if (ch === ";") return i + 1;
+    const char = text[i];
+    if (char === ";" || char === "{" || char === "}") {
+      if (char === ";") return i + 1;
       return i; // let the main loop handle { and }
     }
-    if (ch === ":") {
+    if (char === ":") {
       // We might be in a selector with pseudo-class. Skip to { or ;
       i++;
       continue;
     }
-    if (ch === '"' || ch === "'") {
+    if (char === '"' || char === "'") {
       i = skipString(text, i);
       continue;
     }
