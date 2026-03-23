@@ -7,7 +7,9 @@
   --color-surface-active: light-dark(#e8eaed, #3c4043);
   --color-primary: light-dark(#1a73e8, #8ab4f8);
   --color-primary-hover: light-dark(#1557b0, #669df6);
+  /* On-primary works universally: light primaries are dark, dark primaries are light pastels */
   --color-primary-on: light-dark(#fff, #000);
+  /* Functional colors — intentionally theme-independent */
   --color-success: light-dark(#1e8e3e, #2d6a4f);
   --color-success-hover: light-dark(#1a7f37, #245a42);
   --color-text: light-dark(#202124, #e8eaed);
@@ -23,6 +25,8 @@
   --radius-card: 12px;
   --radius-button: 100px;
   --radius-swatch: 4px;
+  --overlay-hover: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.08));
+  --border-swatch: 1px solid light-dark(rgba(0, 0, 0, 0.15), rgba(255, 255, 255, 0.1));
   --shadow-card: light-dark(
     0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15),
     0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 4px 8px 3px rgba(0, 0, 0, 0.15)
@@ -85,7 +89,7 @@ h1 {
 #theme-btn:hover,
 #popout-btn:hover {
   color: var(--color-text-muted);
-  background: light-dark(rgba(0, 0, 0, 0.06), rgba(255, 255, 255, 0.08));
+  background: var(--overlay-hover);
 }
 
 #theme-btn.active {
@@ -174,7 +178,7 @@ h1 {
   width: 48px;
   height: 48px;
   border-radius: var(--radius-swatch);
-  border: 1px solid light-dark(rgba(0, 0, 0, 0.15), rgba(255, 255, 255, 0.1));
+  border: var(--border-swatch);
   flex-shrink: 0;
 }
 
@@ -379,7 +383,7 @@ h1 {
   width: 28px;
   height: 28px;
   border-radius: var(--radius-swatch);
-  border: 1px solid light-dark(rgba(0, 0, 0, 0.15), rgba(255, 255, 255, 0.1));
+  border: var(--border-swatch);
   flex-shrink: 0;
 }
 
@@ -440,7 +444,7 @@ h1 {
   width: 24px;
   height: 24px;
   border-radius: var(--radius-swatch);
-  border: 1px solid light-dark(rgba(0, 0, 0, 0.15), rgba(255, 255, 255, 0.1));
+  border: var(--border-swatch);
   flex-shrink: 0;
 }
 

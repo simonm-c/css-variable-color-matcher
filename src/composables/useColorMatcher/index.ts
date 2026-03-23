@@ -60,10 +60,7 @@ function findMatches(pickedHex: string, vars: Record<string, string>): TieredMat
   const exact = matches.filter((m) => Math.round(m.distance) <= EXACT_DISTANCE_THRESHOLD);
   const rest = matches.filter((m) => Math.round(m.distance) > EXACT_DISTANCE_THRESHOLD);
 
-  const closeCount = Math.max(
-    CLOSE_MATCHES_COUNT,
-    exact.length > CLOSE_MATCHES_COUNT ? 0 : CLOSE_MATCHES_COUNT,
-  );
+  const closeCount = exact.length > CLOSE_MATCHES_COUNT ? 0 : CLOSE_MATCHES_COUNT;
   const close = rest.slice(0, closeCount);
   const far = rest.slice(closeCount, closeCount + CLOSE_MATCHES_COUNT);
 

@@ -16,6 +16,8 @@ Built for developers and designers working with design systems, Tailwind CSS, or
 - **Save named lists** of variables and switch between them to compare across pages
 - **Pop-out window** for easier side-by-side use
 - **Multi-frame scanning** — scans all iframes on the page
+- **Chrome-matching theme** with Material Design UI and automatic dark mode support
+- **Internationalization** — UI strings externalized via Chrome i18n (`_locales/`)
 
 ## Installation
 
@@ -75,27 +77,43 @@ The color parser recognizes all modern CSS color formats:
 ## Development
 
 ```sh
-pnpm run build       # Compile TypeScript → JavaScript
-pnpm run watch       # Watch mode compilation
-pnpm run fmt         # Format with oxfmt
-pnpm run fmt:check   # Check formatting
-pnpm run lint        # Lint with oxlint
-pnpm run lint:fix    # Auto-fix lint issues
+pnpm run build            # Compile TypeScript → dist/
+pnpm run watch            # Watch mode compilation
+pnpm run fmt              # Format with oxfmt
+pnpm run fmt:check        # Check formatting
+pnpm run lint             # Lint with oxlint
+pnpm run lint:fix         # Auto-fix lint issues
+pnpm run test             # Run unit tests (Vitest)
+pnpm run test:watch       # Run tests in watch mode
+pnpm run test:coverage    # Run tests with coverage
+pnpm run test:integration # Build + run Puppeteer integration tests
+pnpm run test:all         # Run unit + integration tests
 ```
 
-Source files are TypeScript (`*.ts`). Never edit the compiled `.js` files directly.
+Source files are TypeScript in `src/`. Never edit the compiled `dist/*.js` files directly.
 
 ## Project Structure
 
-| File | Description |
-|------|-------------|
-| `popup.ts` | Extension popup UI, scanning orchestration, search/filter, saved lists |
-| `content.ts` | Content script: eyedropper integration, message handling |
-| `background.ts` | Service worker: pop-out window management |
-| `useColor.ts` | Color parsing, format conversion, OKLab distance calculation |
-| `popup.html` | Popup markup |
-| `popup.css` | Popup styles (dark theme) |
-| `manifest.json` | Chrome extension manifest (V3) |
+```
+src/
+├── composables/
+│   ├── useChrome/          # Chrome extension API wrapper (storage, tabs, scripting, messaging)
+│   └── useColorMatcher/    # Color matching and tiered comparison logic
+├── utilities/
+│   ├── colorParsing/       # Color parsing and OKLab distance comparison
+│   ├── scanner/            # Self-contained frame scanner (injected into pages)
+│   ├── popupRenderer/      # DOM rendering functions for popup UI
+│   ├── eyedropperHandler/  # Content script: EyeDropper API integration
+│   └── panelWindowManager/ # Service worker: panel window lifecycle
+├── entries/
+│   └── popup/              # Popup entry point: wires composables and utilities
+└── styles/
+    └── popup.css           # Popup styles (Chrome-matching theme, dark mode)
+
+popup.html                  # Popup markup
+manifest.json               # Chrome extension manifest (V3)
+dist/                       # Compiled JS output (gitignored)
+```
 
 ## How Color Matching Works
 

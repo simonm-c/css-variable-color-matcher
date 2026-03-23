@@ -246,12 +246,10 @@ export function parseColor(css: string): OklabColor | null {
     let r = parseFloat(components[0]);
     let g = parseFloat(components[1]);
     let b = parseFloat(components[2]);
-    // Handle percentage values
-    if (components[0].includes("%")) {
-      r = (r / 100) * 255;
-      g = (g / 100) * 255;
-      b = (b / 100) * 255;
-    }
+    // Handle percentage values per-component
+    if (components[0].includes("%")) r = (r / 100) * 255;
+    if (components[1].includes("%")) g = (g / 100) * 255;
+    if (components[2].includes("%")) b = (b / 100) * 255;
     const a = fn === "rgba" && components.length >= 4 ? parseComponent(components[3]) : alpha;
     const [L, oa, ob] = srgbToOklab(r / 255, g / 255, b / 255);
     return validOklab({ L, a: oa, b: ob, alpha: a });

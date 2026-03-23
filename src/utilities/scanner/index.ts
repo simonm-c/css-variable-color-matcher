@@ -101,17 +101,17 @@ export function scanFrameColorVariables(): Record<string, string> {
   // Walk all elements once for two purposes:
   // 1. Find computed values for stylesheet properties that selectors couldn't resolve
   // 2. Pick up inline-style custom properties (JS-injected variables)
-  const unresolved = [...propSelectors.keys()].filter((p) => !vars[p]);
+  const unresolved = new Set([...propSelectors.keys()].filter((p) => !vars[p]));
 
   for (const el of document.querySelectorAll("*")) {
     // Check computed style for unresolved stylesheet properties
-    if (unresolved.length > 0) {
+    if (unresolved.size > 0) {
       const computed = getComputedStyle(el);
-      for (let i = unresolved.length - 1; i >= 0; i--) {
-        const value = computed.getPropertyValue(unresolved[i]).trim();
+      for (const prop of unresolved) {
+        const value = computed.getPropertyValue(prop).trim();
         if (value) {
-          vars[unresolved[i]] = value;
-          unresolved.splice(i, 1);
+          vars[prop] = value;
+          unresolved.delete(prop);
         }
       }
     }

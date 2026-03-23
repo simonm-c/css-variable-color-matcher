@@ -236,7 +236,7 @@ describe("popup entry point", () => {
       await vi.waitFor(() => expect(chromeMock.scripting.executeScript).toHaveBeenCalled());
       expect(chromeMock.scripting.executeScript).toHaveBeenCalledWith({
         target: { tabId: 42 },
-        files: ["content.js"],
+        files: ["dist/utilities/eyedropperHandler/index.js"],
       });
     });
   });
