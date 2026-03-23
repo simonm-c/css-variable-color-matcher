@@ -57,11 +57,12 @@ function proPhotoToLinear(channel: number): number {
 // linear = value / 4.5                           when value < beta
 // linear = ((value + (alpha - 1)) / alpha)^(1/0.45)  otherwise
 function rec2020ToLinear(channel: number): number {
-  const alpha = 1.09929682680944;
-  const beta = 0.018053968510807;
+  // Named per the BT.2020 spec — not related to color alpha/opacity
+  const bt2020Alpha = 1.09929682680944;
+  const bt2020Beta = 0.018053968510807;
   const absolute = Math.abs(channel);
-  if (absolute < beta * 4.5) return channel / 4.5;
-  return Math.pow((absolute + alpha - 1) / alpha, 1 / 0.45) * Math.sign(channel);
+  if (absolute < bt2020Beta * 4.5) return channel / 4.5;
+  return Math.pow((absolute + bt2020Alpha - 1) / bt2020Alpha, 1 / 0.45) * Math.sign(channel);
 }
 
 // --- Conversion matrices ---
@@ -239,6 +240,14 @@ function rec2020ToOklab(r: number, g: number, b: number): ColorTuple {
 function xyzD50ToOklab(xyz: ColorTuple): ColorTuple {
   const xyzD65 = multiplyMatrix(D50_TO_D65, xyz);
   return xyzD65ToOklab(xyzD65);
+}
+
+function xyzD65ChannelsToOklab(x: number, y: number, z: number): ColorTuple {
+  return xyzD65ToOklab([x, y, z]);
+}
+
+function xyzD50ChannelsToOklab(x: number, y: number, z: number): ColorTuple {
+  return xyzD50ToOklab([x, y, z]);
 }
 
 // --- Helper conversions ---
@@ -468,10 +477,29 @@ const NAMED_COLORS: Record<string, string> = {
 
 // --- Parsing ---
 
+// Parse a CSS color component value. Handles the `none` keyword (= 0, per
+// CSS Color 4 §4.4) and percentage values (mapped to 0-1 range).
+// Used for channels where % maps linearly to [0, 1]: oklab L, color() channels, alpha.
 function parseComponent(input: string): number {
   input = input.trim();
   if (input === "none") return 0;
   if (input.endsWith("%")) return parseFloat(input) / 100;
+  return parseFloat(input);
+}
+
+// Parse a component where `none` = 0 but percentage handling is done by the caller.
+// Used for rgb, hsl, hwb, lab, lch, oklch channels where % has non-standard scaling.
+function parseNumberOrNone(input: string): number {
+  input = input.trim();
+  if (input === "none") return 0;
+  return parseFloat(input);
+}
+
+// Parse CIE Lab/LCH lightness: numeric 0-100 or percentage where 100% = 100.
+function parseLabLightness(input: string): number {
+  input = input.trim();
+  if (input === "none") return 0;
+  if (input.endsWith("%")) return parseFloat(input);
   return parseFloat(input);
 }
 
@@ -524,9 +552,9 @@ function parseHexColor(normalized: string): OklabColor | null {
 
 function parseRgb(funcName: string, components: string[], alpha: number): OklabColor | null {
   if (components.length < 3) return null;
-  let red = parseFloat(components[0]);
-  let green = parseFloat(components[1]);
-  let blue = parseFloat(components[2]);
+  let red = parseNumberOrNone(components[0]);
+  let green = parseNumberOrNone(components[1]);
+  let blue = parseNumberOrNone(components[2]);
   if (components[0].includes("%")) red = (red / 100) * 255;
   if (components[1].includes("%")) green = (green / 100) * 255;
   if (components[2].includes("%")) blue = (blue / 100) * 255;
@@ -537,9 +565,9 @@ function parseRgb(funcName: string, components: string[], alpha: number): OklabC
 
 function parseHsl(funcName: string, components: string[], alpha: number): OklabColor | null {
   if (components.length < 3) return null;
-  const h = parseFloat(components[0]);
-  const saturation = parseFloat(components[1]) / 100;
-  const lightness = parseFloat(components[2]) / 100;
+  const h = parseNumberOrNone(components[0]);
+  const saturation = parseNumberOrNone(components[1]) / 100;
+  const lightness = parseNumberOrNone(components[2]) / 100;
   const alphaValue =
     funcName === "hsla" && components.length >= 4 ? parseComponent(components[3]) : alpha;
   return tupleToOklab(hslToOklab(h, saturation, lightness), alphaValue);
@@ -547,41 +575,41 @@ function parseHsl(funcName: string, components: string[], alpha: number): OklabC
 
 function parseHwb(components: string[], alpha: number): OklabColor | null {
   if (components.length < 3) return null;
-  const h = parseFloat(components[0]);
-  const w = parseFloat(components[1]) / 100;
-  const bk = parseFloat(components[2]) / 100;
+  const h = parseNumberOrNone(components[0]);
+  const w = parseNumberOrNone(components[1]) / 100;
+  const bk = parseNumberOrNone(components[2]) / 100;
   return tupleToOklab(hwbToOklab(h, w, bk), alpha);
 }
 
 function parseOklabFunc(components: string[], alpha: number): OklabColor | null {
   if (components.length < 3) return null;
   const L = parseComponent(components[0]);
-  const aChannel = parseFloat(components[1]);
-  const bChannel = parseFloat(components[2]);
+  const aChannel = parseNumberOrNone(components[1]);
+  const bChannel = parseNumberOrNone(components[2]);
   return validOklab({ L, a: aChannel, b: bChannel, alpha });
 }
 
 function parseOklch(components: string[], alpha: number): OklabColor | null {
   if (components.length < 3) return null;
   const L = parseComponent(components[0]);
-  const C = parseFloat(components[1]);
-  const H = parseFloat(components[2]);
+  const C = parseNumberOrNone(components[1]);
+  const H = parseNumberOrNone(components[2]);
   return tupleToOklab(oklchToOklab(L, C, H), alpha);
 }
 
 function parseLabFunc(components: string[], alpha: number): OklabColor | null {
   if (components.length < 3) return null;
-  const L = parseFloat(components[0]);
-  const aChannel = parseFloat(components[1]);
-  const bChannel = parseFloat(components[2]);
+  const L = parseLabLightness(components[0]);
+  const aChannel = parseNumberOrNone(components[1]);
+  const bChannel = parseNumberOrNone(components[2]);
   return tupleToOklab(labToOklab(L, aChannel, bChannel), alpha);
 }
 
 function parseLch(components: string[], alpha: number): OklabColor | null {
   if (components.length < 3) return null;
-  const L = parseFloat(components[0]);
-  const C = parseFloat(components[1]);
-  const H = parseFloat(components[2]);
+  const L = parseLabLightness(components[0]);
+  const C = parseNumberOrNone(components[1]);
+  const H = parseNumberOrNone(components[2]);
   return tupleToOklab(lchToOklab(L, C, H), alpha);
 }
 
@@ -596,9 +624,9 @@ const colorSpaceConverters: Record<string, (r: number, g: number, b: number) => 
   "a98-rgb": a98RgbToOklab,
   "prophoto-rgb": proPhotoToOklab,
   rec2020: rec2020ToOklab,
-  xyz: (x: number, y: number, z: number) => xyzD65ToOklab([x, y, z]),
-  "xyz-d65": (x: number, y: number, z: number) => xyzD65ToOklab([x, y, z]),
-  "xyz-d50": (x: number, y: number, z: number) => xyzD50ToOklab([x, y, z]),
+  xyz: xyzD65ChannelsToOklab,
+  "xyz-d65": xyzD65ChannelsToOklab,
+  "xyz-d50": xyzD50ChannelsToOklab,
 };
 
 function parseColorFunc(components: string[], alpha: number): OklabColor | null {

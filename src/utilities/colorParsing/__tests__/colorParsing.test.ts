@@ -684,6 +684,114 @@ describe("parseColor — edge cases / validOklab", () => {
   });
 });
 
+// --- parseColor: 'none' keyword support ---
+
+describe("parseColor — none keyword", () => {
+  it("rgb: none treated as 0", () => {
+    const color = parseColor("rgb(none 0 0)")!;
+    const expected = parseColor("rgb(0 0 0)")!;
+    expectOklabClose(color, expected);
+  });
+
+  it("rgb: none in green channel", () => {
+    const color = parseColor("rgb(255 none 0)")!;
+    const expected = parseColor("rgb(255 0 0)")!;
+    expectOklabClose(color, expected);
+  });
+
+  it("hsl: none hue treated as 0", () => {
+    const color = parseColor("hsl(none, 100%, 50%)")!;
+    const expected = parseColor("hsl(0, 100%, 50%)")!;
+    expectOklabClose(color, expected);
+  });
+
+  it("hsl: none saturation treated as 0", () => {
+    const color = parseColor("hsl(0, none, 50%)")!;
+    // 0% saturation = grey
+    expect(color).not.toBeNull();
+    expect(color!.a).toBeCloseTo(0, 2);
+    expect(color!.b).toBeCloseTo(0, 2);
+  });
+
+  it("hwb: none whiteness treated as 0", () => {
+    const color = parseColor("hwb(0 none 0%)")!;
+    const expected = parseColor("hwb(0 0% 0%)")!;
+    expectOklabClose(color, expected);
+  });
+
+  it("oklab: none in a channel", () => {
+    const color = parseColor("oklab(0.5 none -0.1)")!;
+    expect(color).not.toBeNull();
+    expect(color!.a).toBeCloseTo(0, 3);
+    expect(color!.b).toBeCloseTo(-0.1, 3);
+  });
+
+  it("oklch: none chroma = achromatic", () => {
+    const color = parseColor("oklch(0.5 none 180)")!;
+    expect(color).not.toBeNull();
+    expect(color!.a).toBeCloseTo(0, 3);
+    expect(color!.b).toBeCloseTo(0, 3);
+  });
+
+  it("oklch: none hue with chroma", () => {
+    const color = parseColor("oklch(0.5 0.2 none)")!;
+    const expected = parseColor("oklch(0.5 0.2 0)")!;
+    expectOklabClose(color, expected);
+  });
+
+  it("lab: none lightness treated as 0", () => {
+    const color = parseColor("lab(none 0 0)")!;
+    expect(color).not.toBeNull();
+    expect(color!.L).toBeCloseTo(0, 1);
+  });
+
+  it("lab: none in a channel", () => {
+    const color = parseColor("lab(50 none 0)")!;
+    const expected = parseColor("lab(50 0 0)")!;
+    expectOklabClose(color, expected);
+  });
+
+  it("lch: none chroma = achromatic", () => {
+    const color = parseColor("lch(50 none 0)")!;
+    const expected = parseColor("lab(50 0 0)")!;
+    expectOklabClose(color, expected);
+  });
+
+  it("lch: none hue", () => {
+    const color = parseColor("lch(50 50 none)")!;
+    const expected = parseColor("lch(50 50 0)")!;
+    expectOklabClose(color, expected);
+  });
+
+  it("color(): none in channel", () => {
+    const color = parseColor("color(srgb none 0.5 0.5)")!;
+    const expected = parseColor("color(srgb 0 0.5 0.5)")!;
+    expectOklabClose(color, expected);
+  });
+});
+
+// --- parseColor: lab/lch percentage lightness ---
+
+describe("parseColor — lab/lch percentage lightness", () => {
+  it("lab: percentage L (50% = 50)", () => {
+    const percent = parseColor("lab(50% 0 0)")!;
+    const numeric = parseColor("lab(50 0 0)")!;
+    expectOklabClose(percent, numeric);
+  });
+
+  it("lab: 100% = L 100", () => {
+    const percent = parseColor("lab(100% 0 0)")!;
+    const numeric = parseColor("lab(100 0 0)")!;
+    expectOklabClose(percent, numeric);
+  });
+
+  it("lch: percentage L (50% = 50)", () => {
+    const percent = parseColor("lch(50% 0 0)")!;
+    const numeric = parseColor("lch(50 0 0)")!;
+    expectOklabClose(percent, numeric);
+  });
+});
+
 // --- Cross-format consistency ---
 
 describe("parseColor — cross-format consistency", () => {
