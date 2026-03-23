@@ -370,6 +370,54 @@ describe("parseColor — color()", () => {
   });
 });
 
+// --- parseColor: too few components (per-parser null paths) ---
+
+describe("parseColor — insufficient components", () => {
+  it("returns null for rgb with too few args", () => {
+    expect(parseColor("rgb(255, 0)")).toBeNull();
+  });
+
+  it("returns null for hsl with too few args", () => {
+    expect(parseColor("hsl(0, 100%)")).toBeNull();
+  });
+
+  it("returns null for hwb with too few args", () => {
+    expect(parseColor("hwb(0 50%)")).toBeNull();
+  });
+
+  it("returns null for oklab with too few args", () => {
+    expect(parseColor("oklab(0.5 0.1)")).toBeNull();
+  });
+
+  it("returns null for oklch with too few args", () => {
+    expect(parseColor("oklch(0.5 0.2)")).toBeNull();
+  });
+
+  it("returns null for lab with too few args", () => {
+    expect(parseColor("lab(50 0)")).toBeNull();
+  });
+
+  it("returns null for lch with too few args", () => {
+    expect(parseColor("lch(50 50)")).toBeNull();
+  });
+
+  it("returns null for color() with too few args", () => {
+    expect(parseColor("color(srgb 1 0)")).toBeNull();
+  });
+});
+
+// --- parseColor: unrecognised function name ---
+
+describe("parseColor — unrecognised function", () => {
+  it("returns null for unknown function name", () => {
+    expect(parseColor("xyz(1 2 3)")).toBeNull();
+  });
+
+  it("returns null for light-dark() (handled by parseLightDark, not parseColor)", () => {
+    expect(parseColor("light-dark(#fff, #000)")).toBeNull();
+  });
+});
+
 // --- parseColor: NaN/edge cases ---
 
 describe("parseColor — edge cases / validOklab", () => {
@@ -379,6 +427,30 @@ describe("parseColor — edge cases / validOklab", () => {
 
   it("returns null for NaN component via hsl", () => {
     expect(parseColor("hsl(0, NaN%, 50%)")).toBeNull();
+  });
+
+  it("returns null for NaN in oklab", () => {
+    expect(parseColor("oklab(NaN 0 0)")).toBeNull();
+  });
+
+  it("returns null for NaN in oklch", () => {
+    expect(parseColor("oklch(NaN 0 0)")).toBeNull();
+  });
+
+  it("returns null for NaN in lab", () => {
+    expect(parseColor("lab(NaN 0 0)")).toBeNull();
+  });
+
+  it("returns null for NaN in lch", () => {
+    expect(parseColor("lch(NaN 0 0)")).toBeNull();
+  });
+
+  it("returns null for NaN in hwb", () => {
+    expect(parseColor("hwb(NaN 0% 0%)")).toBeNull();
+  });
+
+  it("returns null for NaN in color(srgb)", () => {
+    expect(parseColor("color(srgb NaN 0 0)")).toBeNull();
   });
 });
 

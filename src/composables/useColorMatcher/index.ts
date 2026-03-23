@@ -39,10 +39,10 @@ function findMatches(pickedHex: string, vars: ColorVariable[]): TieredMatches {
       continue;
     }
 
-    const ld = parseLightDark(value);
-    if (!ld) continue;
-    const lightColor = parseColor(ld.light);
-    const darkColor = parseColor(ld.dark);
+    const lightDarkResult = parseLightDark(value);
+    if (!lightDarkResult) continue;
+    const lightColor = parseColor(lightDarkResult.light);
+    const darkColor = parseColor(lightDarkResult.dark);
     if (!lightColor && !darkColor) continue;
 
     const lightDist = lightColor ? colorDistanceOklab(pickedColor, lightColor) : Infinity;
@@ -52,14 +52,14 @@ function findMatches(pickedHex: string, vars: ColorVariable[]): TieredMatches {
       name,
       value,
       distance: Math.min(lightDist, darkDist),
-      lightDark: { light: ld.light, dark: ld.dark, lightDist, darkDist },
+      lightDark: { light: lightDarkResult.light, dark: lightDarkResult.dark, lightDist, darkDist },
     });
   }
 
-  matches.sort((a, b) => a.distance - b.distance);
+  matches.sort((matchA, matchB) => matchA.distance - matchB.distance);
 
-  const exact = matches.filter((m) => Math.round(m.distance) <= EXACT_DISTANCE_THRESHOLD);
-  const rest = matches.filter((m) => Math.round(m.distance) > EXACT_DISTANCE_THRESHOLD);
+  const exact = matches.filter((match) => Math.round(match.distance) <= EXACT_DISTANCE_THRESHOLD);
+  const rest = matches.filter((match) => Math.round(match.distance) > EXACT_DISTANCE_THRESHOLD);
 
   const closeCount = exact.length > CLOSE_MATCHES_COUNT ? 0 : CLOSE_MATCHES_COUNT;
   const close = rest.slice(0, closeCount);

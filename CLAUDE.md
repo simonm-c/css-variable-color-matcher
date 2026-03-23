@@ -49,6 +49,16 @@ Variables are stored and passed as `ColorVariable[]` — arrays allow duplicate 
 - `dist/` — Compiled JS output (gitignored)
 - `build.mjs` — esbuild build script
 
+## Naming conventions
+
+- **Descriptive names required** — no single-letter or cryptic abbreviations for variables, parameters, arrow function params, or type/interface names
+- **Allowed short names**: loop index `i`, DOM elements `el`, and color science parameter names that match their specification (`r`/`g`/`b`, `L`/`C`/`H`, `a`/`b` in OKLab/Lab, `h`/`s`/`l` in HSL, `w`/`bk` in HWB)
+- Arrow function params: use `colorVar` (not `v`), `match` (not `m`), `event` (not `e`), `part` (not `s`), `char` (not `ch`)
+- Sort comparators: `matchA`/`matchB` (not `a`/`b`)
+- Local color channel vars: `red`/`green`/`blue`/`alpha` (not `r`/`g`/`b`/`a`)
+- OKLab destructured results: `oklabL`/`oklabA`/`oklabB` (not `oL`/`oa`/`ob`)
+- **Math and color science comments**: non-obvious formulas must cite their source (spec URL or paper). Domain-specific terms (e.g. "tristimulus", "chromatic adaptation") must include a brief inline definition. Intermediate variables in formulas should have descriptive names, not single letters (e.g. `transferX` not `fx`, `normalizedY` not `y`, `deltaLightness` not `dL`)
+
 ## Key patterns
 
 - Composables follow the `export function useX() { return { ... } }` pattern, encapsulating stateful or API-wrapping logic

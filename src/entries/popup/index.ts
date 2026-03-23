@@ -56,8 +56,13 @@ for (const el of document.querySelectorAll<HTMLInputElement>("[data-i18n-placeho
 let currentVars: ColorVariable[] = [];
 
 // Migrate old Record<string, string> format to ColorVariable[]
-function isColorVariable(v: unknown): v is ColorVariable {
-  return typeof v === "object" && v !== null && typeof (v as ColorVariable).name === "string" && typeof (v as ColorVariable).value === "string";
+function isColorVariable(value: unknown): value is ColorVariable {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as ColorVariable).name === "string" &&
+    typeof (value as ColorVariable).value === "string"
+  );
 }
 
 function normalizeVars(raw: unknown): ColorVariable[] {
@@ -130,7 +135,7 @@ function displaySavedLists(
           if (!(oldName in freshLists) || newName in freshLists) return;
           freshLists[newName] = freshLists[oldName];
           delete freshLists[oldName];
-          const newActive = data.activeList === oldName ? newName : data.activeList ?? null;
+          const newActive = data.activeList === oldName ? newName : (data.activeList ?? null);
           setStorage({ savedLists: freshLists, activeList: newActive }).then(() => {
             displaySavedLists(freshLists, newActive);
           });
@@ -158,20 +163,23 @@ function closeThemeDropdown(): void {
   themeBtn.classList.remove("active");
 }
 
-themeBtn.addEventListener("click", (e) => {
-  e.stopPropagation();
+themeBtn.addEventListener("click", (event) => {
+  event.stopPropagation();
   const wasHidden = themeDropdown.classList.toggle("hidden");
   themeBtn.classList.toggle("active", !wasHidden);
 });
 
-document.addEventListener("click", (e) => {
-  if (!themeDropdown.classList.contains("hidden") && !themeDropdown.contains(e.target as Node)) {
+document.addEventListener("click", (event) => {
+  if (
+    !themeDropdown.classList.contains("hidden") &&
+    !themeDropdown.contains(event.target as Node)
+  ) {
     closeThemeDropdown();
   }
 });
 
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !themeDropdown.classList.contains("hidden")) {
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !themeDropdown.classList.contains("hidden")) {
     closeThemeDropdown();
     themeBtn.focus();
   }

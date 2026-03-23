@@ -2,16 +2,16 @@ import { parseCssCustomProperties } from "../cssParser/index.js";
 import type { ColorVariable } from "../cssParser/index.js";
 
 export function exportListAsCss(listName: string, vars: ColorVariable[]): void {
-  const lines = vars.map((v) => `  ${v.name}: ${v.value};`);
+  const lines = vars.map((colorVar) => `  ${colorVar.name}: ${colorVar.value};`);
   const css = `:root {\n${lines.join("\n")}\n}\n`;
 
   const blob = new Blob([css], { type: "text/css" });
   const url = URL.createObjectURL(blob);
 
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${listName.replace(/[^a-zA-Z0-9 _-]/g, "_")}.css`;
-  a.click();
+  const downloadLink = document.createElement("a");
+  downloadLink.href = url;
+  downloadLink.download = `${listName.replace(/[^a-zA-Z0-9 _-]/g, "_")}.css`;
+  downloadLink.click();
 
   URL.revokeObjectURL(url);
 }

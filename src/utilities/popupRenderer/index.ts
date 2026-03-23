@@ -25,7 +25,7 @@ export function renderColorVariables(
   const { varsSummaryEl, varsListEl, varsSearchEl } = elements;
   varsListEl.innerHTML = "";
 
-  const allEntries = vars.filter((v) => isColorValue(v.value));
+  const allEntries = vars.filter((colorVar) => isColorValue(colorVar.value));
   if (allEntries.length === 0) {
     varsSummaryEl.textContent = chrome.i18n.getMessage("colorVariablesCount", ["0"]);
     varsSearchEl.parentElement!.style.display = "none";
@@ -40,7 +40,9 @@ export function renderColorVariables(
   const query = varsSearchEl.value.toLowerCase();
   const entries = query
     ? allEntries.filter(
-        (v) => v.name.toLowerCase().includes(query) || v.value.toLowerCase().includes(query),
+        (colorVar) =>
+          colorVar.name.toLowerCase().includes(query) ||
+          colorVar.value.toLowerCase().includes(query),
       )
     : allEntries;
 
@@ -142,7 +144,7 @@ export function renderSavedLists(
 
   for (const name of names) {
     const vars = lists[name];
-    const count = vars.filter((v) => isColorValue(v.value)).length;
+    const count = vars.filter((colorVar) => isColorValue(colorVar.value)).length;
 
     const isActive = name === activeList;
 
@@ -150,9 +152,9 @@ export function renderSavedLists(
     entry.className = `saved-list-entry${isActive ? " active" : ""}`;
     entry.style.cursor = "pointer";
 
-    entry.addEventListener("click", (e) => {
+    entry.addEventListener("click", (event) => {
       if (
-        (e.target as HTMLElement).closest(
+        (event.target as HTMLElement).closest(
           ".saved-list-delete, .saved-list-export, .saved-list-rename, .saved-list-name-input",
         )
       )
@@ -179,12 +181,12 @@ export function renderSavedLists(
         }
       }
 
-      input.addEventListener("keydown", (ke) => {
-        if (ke.key === "Enter") {
-          ke.preventDefault();
+      input.addEventListener("keydown", (keyEvent) => {
+        if (keyEvent.key === "Enter") {
+          keyEvent.preventDefault();
           commit();
         }
-        if (ke.key === "Escape") {
+        if (keyEvent.key === "Escape") {
           input.replaceWith(nameEl);
         }
       });
@@ -205,8 +207,8 @@ export function renderSavedLists(
     renameBtn.ariaLabel = chrome.i18n.getMessage("renameList", [name]);
     renameBtn.innerHTML =
       '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83l3.75 3.75z"/></svg>';
-    renameBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
+    renameBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
       startRename();
     });
 
@@ -216,8 +218,8 @@ export function renderSavedLists(
     exportBtn.ariaLabel = chrome.i18n.getMessage("exportList", [name]);
     exportBtn.innerHTML =
       '<svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M5 20h14v-2H5zM19 9h-4V3H9v6H5l7 7z"/></svg>';
-    exportBtn.addEventListener("click", (e) => {
-      e.stopPropagation();
+    exportBtn.addEventListener("click", (event) => {
+      event.stopPropagation();
       callbacks.onExportList(name, vars);
     });
 
