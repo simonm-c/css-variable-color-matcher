@@ -14,13 +14,14 @@ This data never leaves your browser.
 
 ## Network Requests
 
-This extension makes no network requests. It operates entirely offline.
+The only network activity is fetching the current page's own `<link>` stylesheets to parse CSS variable declarations. No data is sent to external servers or third-party endpoints.
 
 ## Permissions
 
 - **activeTab** — Access the current tab when you click the extension icon
 - **scripting** — Inject the scanner and eyedropper scripts into the active page
 - **storage** — Persist your scanned variables, picked colors, and saved lists locally
+- **host_permissions (`<all_urls>`)** — Scan CSS variables on any website the user visits and fetch that page's stylesheets for parsing
 
 ## Third-Party Services
 
